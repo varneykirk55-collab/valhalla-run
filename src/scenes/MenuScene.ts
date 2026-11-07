@@ -1,14 +1,17 @@
 import Phaser from 'phaser';
-import { DEPTH, FONT, GAME_H, GAME_W } from '../config';
+import { DEPTH, GAME_W } from '../config';
 import { RUNNER } from '../runner/art';
 import { sfx } from '../audio/Sfx';
 import { Decor } from '../entities/Decor';
 import { RUNE_COLORS } from '../gfx/props';
 import { Background } from '../systems/Background';
-import { POWER_KINDS, POWER_LABELS } from '../systems/PowerUps';
+import { POWER_LABELS } from '../systems/PowerUps';
 import { Projection } from '../systems/Projection';
 import { loadBest } from '../systems/Storage';
 import { Track } from '../systems/Track';
+import { iconTexture, logoTexture } from '../gfx/ui';
+import { HudPill, Modal, NorseButton } from '../ui/components';
+import { UI, formatNumber, goldFill, uiText } from '../ui/theme';
 
 export class MenuScene extends Phaser.Scene {
   private proj!: Projection;
@@ -17,6 +20,8 @@ export class MenuScene extends Phaser.Scene {
   private hero!: Phaser.GameObjects.Image;
   private decor: Decor[] = [];
   private drift = 0;
+  /** The open Settings / How to Play panel, if any. */
+  private modal?: Modal;
   private starting = false;
 
   constructor() {
@@ -26,6 +31,7 @@ export class MenuScene extends Phaser.Scene {
   create(): void {
     this.starting = false;
     this.drift = 0;
+    this.modal = undefined;
     this.proj = new Projection();
     this.background = new Background(this);
     this.track = new Track(this);
@@ -42,58 +48,156 @@ export class MenuScene extends Phaser.Scene {
       .setScale(RUNNER.scale)
       .setDepth(DEPTH.player);
 
-    // Darken the top so the title reads over the aurora.
+    // Darken the top so the logo reads over the aurora.
     const shade = this.add.graphics().setDepth(DEPTH.hud - 1);
-    shade.fillGradientStyle(0x070b16, 0x070b16, 0x070b16, 0x070b16, 0.75, 0.75, 0, 0);
-    shade.fillRect(0, 0, GAME_W, 420);
+    shade.fillGradientStyle(0x070b16, 0x070b16, 0x070b16, 0x070b16, 0.7, 0.7, 0, 0);
+    shade.fillRect(0, 0, GAME_W, 380);
 
-    const cx = GAME_W / 2;
-    const title = (y: number, str: string, size: number, color: string) =>
-      this.add
-        .text(cx, y, str, { fontFamily: FONT, fontSize: `${size}px`, fontStyle: '900', color, stroke: '#070b16', strokeThickness: 8 })
-        .setOrigin(0.5)
-        .setDepth(DEPTH.hud);
+    this.buildLogo();
+    this.buildMenu();
 
-    title(118, 'VALHALLA', 68, '#f4e7c5').setShadow(0, 0, '#d9a441', 18, true, true);
-    title(184, 'DASH', 54, '#d9a441');
-    title(236, 'Outrun Ragnarök', 22, '#c9d6e8').setStroke('#070b16', 5);
-
-    // Controls & power-up legend on a translucent card
-    const card = this.add.graphics().setDepth(DEPTH.hud);
-    card.fillStyle(0x0d1424, 0.72);
-    card.fillRoundedRect(cx - 220, 520, 440, 250, 18);
-    card.lineStyle(2, 0xd9a441, 0.6);
-    card.strokeRoundedRect(cx - 220, 520, 440, 250, 18);
-
-    const body = { fontFamily: FONT, fontSize: '18px', fontStyle: '700', color: '#d6e2f2' };
-    this.add.text(cx, 548, 'Swipe ← →  lanes   ·   ↑ jump   ·   ↓ slide', body).setOrigin(0.5).setDepth(DEPTH.hud);
-    this.add
-      .text(cx, 576, 'Keys: arrows / WASD / space', { ...body, fontSize: '15px', color: '#8fa1bb' })
-      .setOrigin(0.5)
-      .setDepth(DEPTH.hud);
-
-    POWER_KINDS.forEach((kind, i) => {
-      const y = 628 + i * 46;
-      this.add.image(cx - 150, y, `rune_${kind}`).setScale(0.55).setDepth(DEPTH.hud);
-      this.add
-        .text(cx - 118, y, POWER_LABELS[kind], { ...body, color: RUNE_COLORS[kind] })
-        .setOrigin(0, 0.5)
-        .setDepth(DEPTH.hud);
+    // Keyboard: Space / Enter start the run (ignored while a panel is open).
+    const keyStart = () => !this.modal && this.begin();
+    this.input.keyboard?.on('keydown-SPACE', keyStart);
+    this.input.keyboard?.on('keydown-ENTER', keyStart);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.keyboard?.off('keydown-SPACE', keyStart);
+      this.input.keyboard?.off('keydown-ENTER', keyStart);
     });
+  }
 
-    const prompt = title(462, 'TAP TO BEGIN', 34, '#5ef2ff').setStroke('#070b16', 6);
-    this.tweens.add({ targets: prompt, alpha: 0.35, scale: 0.96, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  // ---- Norse UI ----------------------------------------------------------------
 
-    const best = loadBest();
-    if (best > 0) {
+  /** Crest with crossed axes and the VALHALLA RUN wordmark; floats gently, side runes glow. */
+  private buildLogo(): void {
+    const cx = GAME_W / 2;
+    const plate = this.add.image(0, 0, logoTexture(this)).setOrigin(0.5, 0);
+    const word = goldFill(uiText(this, 0, 150, 'VALHALLA', 64, { stroke: '#1c1206', strokeThickness: 10 }).setOrigin(0.5));
+    const run = goldFill(uiText(this, 0, 226, 'RUN', 92, { stroke: '#1c1206', strokeThickness: 12 }).setOrigin(0.5));
+    const glows = [-1, 1].map((side) =>
       this.add
-        .text(cx, GAME_H - 34, `BEST  ${best}`, { ...body, fontSize: '20px', color: '#d9a441' })
-        .setOrigin(0.5)
-        .setDepth(DEPTH.hud);
-    }
+        .image(side * 131, 178, 'spark')
+        .setDisplaySize(64, 90)
+        .setTint(0x5ef2ff)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setAlpha(0.25),
+    );
+    const logo = this.add.container(cx, 26, [...glows, plate, word, run]).setDepth(DEPTH.hud);
+    this.tweens.add({ targets: glows, alpha: 0.7, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: logo, y: 32, duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  }
 
-    this.input.once('pointerup', () => this.begin());
-    this.input.keyboard?.once('keydown', () => this.begin());
+  private buildMenu(): void {
+    const cx = GAME_W / 2;
+    const best = loadBest();
+    const crown = this.add.image(0, 0, iconTexture(this, 'crown', 34));
+    const bestPill = new HudPill(this, cx, 362, 250, crown, UI.gold).setDepth(DEPTH.hud);
+    bestPill.value.setText(best > 0 ? `BEST ${formatNumber(best)}` : 'BEST —');
+
+    new NorseButton(this, cx, 454, {
+      variant: 'gold',
+      width: 380,
+      height: 100,
+      label: 'RUN',
+      fontSize: 54,
+      sound: 'none', // begin() plays the confirm
+      pulse: true,
+      onClick: () => this.begin(),
+    }).setDepth(DEPTH.hud);
+
+    new NorseButton(this, cx, 550, {
+      variant: 'blue',
+      width: 330,
+      height: 72,
+      label: 'SETTINGS',
+      icon: 'gear',
+      onClick: () => this.openSettings(),
+    }).setDepth(DEPTH.hud);
+
+    new NorseButton(this, cx, 634, {
+      variant: 'blue',
+      width: 330,
+      height: 72,
+      label: 'HOW TO PLAY',
+      icon: 'book',
+      onClick: () => this.openHowTo(),
+    }).setDepth(DEPTH.hud);
+  }
+
+  private openSettings(): void {
+    if (this.modal) return;
+    const H = 400;
+    const top = -H / 2;
+    const modal = new Modal(this, { title: 'SETTINGS', width: 420, height: H, depth: DEPTH.overlay, onClose: () => (this.modal = undefined) });
+    const soundLabel = () => (sfx(this).muted ? 'SOUND: OFF' : 'SOUND: ON');
+    const sound = new NorseButton(this, 0, top + 180, {
+      variant: 'blue',
+      width: 300,
+      height: 70,
+      label: soundLabel(),
+      icon: sfx(this).muted ? 'soundOff' : 'soundOn',
+      onClick: () => {
+        sfx(this).toggleMute();
+        sound.setLabel(soundLabel()).setIcon(sfx(this).muted ? 'soundOff' : 'soundOn');
+      },
+    });
+    const hint = uiText(this, 0, top + 250, 'Desktop: press M to mute', 18, { color: UI.muted }).setOrigin(0.5);
+    const done = new NorseButton(this, 0, top + 326, {
+      variant: 'gold',
+      width: 240,
+      height: 76,
+      label: 'DONE',
+      sound: 'confirm',
+      onClick: () => modal.close(),
+    });
+    modal.add(sound, hint, done);
+    this.modal = modal;
+  }
+
+  private openHowTo(): void {
+    if (this.modal) return;
+    const H = 720;
+    const top = -H / 2;
+    const modal = new Modal(this, { title: 'HOW TO PLAY', width: 470, height: H, depth: DEPTH.overlay, onClose: () => (this.modal = undefined) });
+    const left = -190;
+    const label = (y: number, str: string) => uiText(this, left, top + y, str, 20, { color: UI.gold, align: 'left' }).setOrigin(0, 0.5);
+    const line = (y: number, str: string, color: string = UI.cream, size = 19) =>
+      uiText(this, left, top + y, str, size, { color, align: 'left', strokeThickness: 3 }).setOrigin(0, 0.5);
+
+    const items: Phaser.GameObjects.GameObject[] = [
+      label(136, 'CONTROLS'),
+      line(168, 'Swipe left / right: change lane'),
+      line(196, 'Swipe up: jump   ·   Swipe down: slide'),
+      line(224, 'Keys: arrows / WASD / space   ·   Esc: pause', UI.muted, 16),
+      label(268, 'DANGERS'),
+      line(300, 'Jump over rocks and ice spikes'),
+      line(328, 'Slide under fallen trees and ravens'),
+      line(356, 'Change lane to dodge the draugr'),
+      label(400, 'RUNES'),
+    ];
+    const runes: Array<[string, string, string]> = [
+      ['rune_ansuz', 'Rune: +10 score', RUNE_COLORS.basic],
+      ['rune_shield', `${POWER_LABELS.shield}: blocks one hit`, RUNE_COLORS.shield],
+      ['rune_magnet', `${POWER_LABELS.magnet}: pulls runes in`, RUNE_COLORS.magnet],
+      ['rune_double', POWER_LABELS.double, RUNE_COLORS.double],
+    ];
+    runes.forEach(([key, text, color], i) => {
+      const y = 444 + i * 48;
+      items.push(this.add.image(left + 20, top + y, key).setScale(0.5));
+      items.push(line(y, text, color, 19).setX(left + 50));
+    });
+    items.push(
+      new NorseButton(this, 0, top + 660, {
+        variant: 'gold',
+        width: 240,
+        height: 76,
+        label: 'GOT IT',
+        sound: 'confirm',
+        onClick: () => modal.close(),
+      }),
+    );
+    modal.add(...items);
+    this.modal = modal;
   }
 
   private begin(): void {

@@ -111,34 +111,94 @@ export const GLYPHS: Record<string, Pt[][]> = {
   sowilo: [[[0.68, 0.08], [0.3, 0.44], [0.7, 0.56], [0.32, 0.92]]],
 };
 
-function rune(c: Ctx, glyph: Pt[][], color: string, ring: boolean): void {
-  const glow = c.createRadialGradient(36, 36, 4, 36, 36, 36);
-  glow.addColorStop(0, rgba(color, 0.55));
+type RuneStyle = 'crystal' | 'shield' | 'magnet' | 'sun';
+
+/** Glyph strokes inside a box: a wide coloured glow pass, then a bright core so it reads at small sizes. */
+function glyphStrokes(c: Ctx, glyph: Pt[][], color: string, x: number, y: number, w: number, h: number, width: number): void {
+  const pts = glyph.map((stroke) => stroke.map(([gx, gy]) => [x + gx * w, y + gy * h] as Pt));
+  c.save();
+  c.shadowColor = color;
+  c.shadowBlur = 10;
+  for (const stroke of pts) polyline(c, stroke, color, width);
+  c.restore();
+  for (const stroke of pts) polyline(c, stroke, 'rgba(255,255,255,0.92)', width * 0.38);
+}
+
+/**
+ * Stylised runes (Norse UI pass). Basic runes are glowing cyan crystals; power-ups
+ * are gold-rimmed medallions with a faint emblem behind their own glyph
+ * (Algiz → shield, Fehu → magnet, Sowilo → sun) so each reads at a glance.
+ */
+function rune(c: Ctx, glyph: Pt[][], color: string, style: RuneStyle): void {
+  const glow = c.createRadialGradient(36, 36, 6, 36, 36, 36);
+  glow.addColorStop(0, rgba(color, 0.5));
   glow.addColorStop(1, rgba(color, 0));
   c.fillStyle = glow;
   c.fillRect(0, 0, 72, 72);
-  box(c, 18, 13, 36, 46, 11, vGradient(c, 13, 59, [[0, '#384152'], [1, '#1d222c']]));
-  c.strokeStyle = '#56607a';
-  c.lineWidth = 2;
-  c.stroke();
-  c.save();
-  c.shadowColor = color;
-  c.shadowBlur = 9;
-  for (const stroke of glyph) polyline(c, stroke.map(([x, y]) => [22 + x * 28, 17 + y * 38] as Pt), color, 4);
-  c.restore();
-  if (ring) {
-    c.strokeStyle = color;
-    c.lineWidth = 2.5;
-    c.beginPath();
-    c.arc(36, 36, 31, 0, TAU);
-    c.stroke();
+
+  if (style === 'crystal') {
+    const body: Pt[] = [[36, 5], [53, 18], [53, 54], [36, 67], [19, 54], [19, 18]];
+    poly(c, body, vGradient(c, 5, 67, [[0, '#1d4b66'], [0.5, '#10283d'], [1, '#0a1626']]));
+    poly(c, [[36, 5], [53, 18], [36, 24], [19, 18]], 'rgba(160,250,255,0.28)'); // top facet
+    polyline(c, [[36, 24], [36, 60]], 'rgba(120,230,255,0.18)', 2);
+    c.save();
+    c.shadowColor = color;
+    c.shadowBlur = 8;
+    poly(c, body, undefined, color, 2.5);
+    c.restore();
+    glyphStrokes(c, glyph, color, 25, 19, 22, 36, 4.6);
+    return;
   }
+
+  // Medallion
+  c.fillStyle = vGradient(c, 9, 63, [[0, '#22314f'], [1, '#0c1322']]);
+  c.beginPath();
+  c.arc(36, 36, 27, 0, TAU);
+  c.fill();
+  const inner = c.createRadialGradient(36, 36, 2, 36, 36, 26);
+  inner.addColorStop(0, rgba(color, 0.35));
+  inner.addColorStop(1, rgba(color, 0));
+  c.fillStyle = inner;
+  c.fill();
+
+  // Faint emblem behind the glyph
+  c.save();
+  c.globalAlpha = 0.28;
+  if (style === 'shield') {
+    poly(c, [[36, 15], [53, 21], [51, 41], [36, 56], [21, 41], [19, 21]], color);
+  } else if (style === 'magnet') {
+    c.strokeStyle = color;
+    c.lineWidth = 8;
+    c.beginPath();
+    c.arc(36, 34, 13, Math.PI * 1.05, Math.PI * 1.95, true);
+    c.stroke();
+  } else {
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * TAU;
+      polyline(c, [[36 + Math.cos(a) * 11, 36 + Math.sin(a) * 11], [36 + Math.cos(a) * 23, 36 + Math.sin(a) * 23]], color, 3);
+    }
+  }
+  c.restore();
+
+  // Gold rim + accent inner ring
+  c.lineWidth = 4;
+  c.strokeStyle = vGradient(c, 8, 64, [[0, '#fff0b0'], [0.5, '#e2a943'], [1, '#9c6418']]);
+  c.beginPath();
+  c.arc(36, 36, 28, 0, TAU);
+  c.stroke();
+  c.lineWidth = 1.5;
+  c.strokeStyle = rgba(color, 0.85);
+  c.beginPath();
+  c.arc(36, 36, 24.5, 0, TAU);
+  c.stroke();
+
+  glyphStrokes(c, glyph, color, 23, 17, 26, 38, 5);
 }
 
 export const RUNE_COLORS = {
   basic: '#5ef2ff',
-  shield: '#c79bff',
-  magnet: '#7dff9a',
+  shield: '#6cb6ff',
+  magnet: '#ff6670',
   double: '#ffd257',
 } as const;
 
@@ -160,12 +220,12 @@ export function generatePropTextures(scene: Phaser.Scene): void {
   makeTexture(scene, 'pine', 80, 150, pine);
   makeTexture(scene, 'runestone', 44, 90, runestone);
 
-  makeTexture(scene, 'rune_ansuz', 72, 72, (c) => rune(c, GLYPHS.ansuz, RUNE_COLORS.basic, false));
-  makeTexture(scene, 'rune_kenaz', 72, 72, (c) => rune(c, GLYPHS.kenaz, RUNE_COLORS.basic, false));
-  makeTexture(scene, 'rune_tiwaz', 72, 72, (c) => rune(c, GLYPHS.tiwaz, RUNE_COLORS.basic, false));
-  makeTexture(scene, 'rune_shield', 72, 72, (c) => rune(c, GLYPHS.algiz, RUNE_COLORS.shield, true));
-  makeTexture(scene, 'rune_magnet', 72, 72, (c) => rune(c, GLYPHS.fehu, RUNE_COLORS.magnet, true));
-  makeTexture(scene, 'rune_double', 72, 72, (c) => rune(c, GLYPHS.sowilo, RUNE_COLORS.double, true));
+  makeTexture(scene, 'rune_ansuz', 72, 72, (c) => rune(c, GLYPHS.ansuz, RUNE_COLORS.basic, 'crystal'));
+  makeTexture(scene, 'rune_kenaz', 72, 72, (c) => rune(c, GLYPHS.kenaz, RUNE_COLORS.basic, 'crystal'));
+  makeTexture(scene, 'rune_tiwaz', 72, 72, (c) => rune(c, GLYPHS.tiwaz, RUNE_COLORS.basic, 'crystal'));
+  makeTexture(scene, 'rune_shield', 72, 72, (c) => rune(c, GLYPHS.algiz, RUNE_COLORS.shield, 'shield'));
+  makeTexture(scene, 'rune_magnet', 72, 72, (c) => rune(c, GLYPHS.fehu, RUNE_COLORS.magnet, 'magnet'));
+  makeTexture(scene, 'rune_double', 72, 72, (c) => rune(c, GLYPHS.sowilo, RUNE_COLORS.double, 'sun'));
 
   makeTexture(scene, 'shadow', 80, 22, (c) => {
     c.fillStyle = 'rgba(10,14,24,0.55)';

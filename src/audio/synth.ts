@@ -249,6 +249,16 @@ export const RECIPES: Record<string, SfxRecipe> = {
     },
   },
 
+  // UI tap: soft wooden click with a faint bright tick (secondary buttons, toggles, pause).
+  sfx_ui_tap: {
+    duration: 0.12,
+    channels: 1,
+    render: ([o], sr) => {
+      thump(o, sr, 0, 420, 220, 0.025, 0.7, 1.5);
+      ping(o, sr, 0.002, 1760, [1, 2.4], 0.02, 0.35);
+    },
+  },
+
   // UI fail: muted low horn (G2, lowpassed saw, bends down) over a soft thud.
   sfx_ui_fail: {
     duration: 0.65,

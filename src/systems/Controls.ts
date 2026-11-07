@@ -43,7 +43,12 @@ export class Controls {
     });
   }
 
-  private onDown(p: Phaser.Input.Pointer): void {
+  private onDown(p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[] = []): void {
+    // Presses on UI (pause button) are not swipes.
+    if (over.length > 0) {
+      this.start = null;
+      return;
+    }
     this.start = { x: p.x, y: p.y, id: p.id };
     this.fired = false;
   }

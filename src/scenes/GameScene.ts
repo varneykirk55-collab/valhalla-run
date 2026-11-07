@@ -17,6 +17,7 @@ import { Action } from '../types';
 import { Hud } from '../ui/Hud';
 import { sfx } from '../audio/Sfx';
 import { showGameOver } from '../ui/GameOverPanel';
+import { RESUMED_AT } from './PauseScene';
 
 type State = 'running' | 'dead';
 
@@ -55,10 +56,28 @@ export class GameScene extends Phaser.Scene {
     this.player = new Player(this);
     this.powers = new PowerUps();
     this.fx = new Effects(this);
-    this.hud = new Hud(this);
+    this.hud = new Hud(this, () => this.pause());
     new Controls(this, (a) => this.onAction(a));
 
+    // Pause: HUD button, Esc or P.
+    const keyPause = () => this.pause();
+    this.input.keyboard?.on('keydown-ESC', keyPause);
+    this.input.keyboard?.on('keydown-P', keyPause);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.keyboard?.off('keydown-ESC', keyPause);
+      this.input.keyboard?.off('keydown-P', keyPause);
+    });
+
     this.cameras.main.fadeIn(350, 10, 19, 40);
+  }
+
+  /** Freeze the run and show the pause overlay (UI only: the world simply stops updating). */
+  private pause(): void {
+    if (this.state !== 'running' || this.scene.isPaused()) return;
+    const resumedAt = (this.registry.get(RESUMED_AT) as number | undefined) ?? -Infinity;
+    if (this.game.loop.time - resumedAt < 250) return; // same key press that just resumed
+    this.scene.pause();
+    this.scene.launch('Pause');
   }
 
   get score(): number {
@@ -174,6 +193,7 @@ export class GameScene extends Phaser.Scene {
 
   private die(): void {
     this.state = 'dead';
+    this.hud.setPauseVisible(false);
     sfx(this).crash(); // SFX: death / crash
     const at = this.player.crash();
     this.fx.crash(at.x, at.y);
@@ -189,9 +209,15 @@ export class GameScene extends Phaser.Scene {
       showGameOver(
         this,
         { score, distance: this.distance, runes: this.runeCount, best: Math.max(score, prevBest), newBest },
-        () => {
-          this.cameras.main.fadeOut(220, 10, 19, 40);
-          this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.restart());
+        {
+          onRestart: () => {
+            this.cameras.main.fadeOut(220, 10, 19, 40);
+            this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.restart());
+          },
+          onMenu: () => {
+            this.cameras.main.fadeOut(220, 10, 19, 40);
+            this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('Menu'));
+          },
         },
       ),
     );

@@ -18,6 +18,7 @@ const VOLUME: Record<string, number> = {
   sfx_growl: 0.4,
   sfx_ui_confirm: 0.5,
   sfx_ui_fail: 0.65,
+  sfx_ui_tap: 0.4,
 };
 
 /** Pentatonic steps (cents) for successive rune pickups. */
@@ -51,6 +52,10 @@ class Sfx {
     window.addEventListener('keydown', (e) => {
       if (e.code === 'KeyM' && !e.repeat) this.toggleMute();
     });
+  }
+
+  get muted(): boolean {
+    return this.game.sound.mute;
   }
 
   toggleMute(): boolean {
@@ -120,6 +125,10 @@ class Sfx {
 
   uiConfirm(): void {
     this.play('sfx_ui_confirm');
+  }
+
+  uiTap(): void {
+    this.play('sfx_ui_tap');
   }
 
   uiFail(): void {
