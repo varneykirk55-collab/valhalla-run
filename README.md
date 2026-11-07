@@ -17,6 +17,7 @@ npm run build    # type-check + production build to dist/
 | Change lane | swipe left / right | ← → / A D |
 | Jump | swipe up | ↑ / W / Space |
 | Slide | swipe down (mid-air = slam down) | ↓ / S |
+| Pause | Pause button, or tap the pause screen | P / Esc |
 
 ## Obstacles
 

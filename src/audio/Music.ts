@@ -17,6 +17,8 @@ export class Music {
   private mode: 'idle' | 'menu' | 'run' = 'idle';
   private runIndex = 0;
   private playToken = 0;
+  /** True while a user pause is holding the current song. */
+  private suspended = false;
   private tag: HTMLAudioElement | null = null;
   private readonly onEnded = (): void => {
     if (this.mode !== 'run' || !this.tag || this.tag.loop) return;
@@ -48,12 +50,27 @@ export class Music {
    * browser allows playback. A death restart leaves the current song alone.
    */
   playRun(): void {
-    if (this.mode === 'run' && this.tag && !this.tag.paused) return;
+    if (this.mode === 'run' && this.tag && !this.tag.paused && !this.suspended) return;
     this.mode = 'run';
     this.start(RUN_TRACKS[this.runIndex].key, false);
   }
 
+  /** Hold the current song. Playback position is kept for resume. */
+  pause(): void {
+    if (this.suspended || !this.tag || this.tag.paused) return;
+    this.tag.pause();
+    this.suspended = true;
+  }
+
+  /** Continue the song a pause() stopped, from the same position. */
+  resume(): void {
+    if (!this.suspended || !this.tag) return;
+    this.suspended = false;
+    void this.tag.play();
+  }
+
   private start(key: string, loop: boolean): void {
+    this.suspended = false;
     const token = ++this.playToken;
     const next = this.tagFor(key);
     const previous = this.tag;

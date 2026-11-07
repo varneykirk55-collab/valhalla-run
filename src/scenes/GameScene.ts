@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Music } from '../audio/Music';
-import { PLAYER, RUNE_VALUE } from '../config';
+import { DEPTH, FONT, GAME_H, GAME_W, PLAYER, RUNE_VALUE } from '../config';
 import { Obstacle } from '../entities/Obstacle';
 import { Player } from '../entities/Player';
 import { Rune, runeColor } from '../entities/Rune';
@@ -36,6 +36,9 @@ export class GameScene extends Phaser.Scene {
   private speed = 0;
   private runeCount = 0;
   private runeScore = 0;
+  private paused = false;
+  private pauseOverlay!: Phaser.GameObjects.Container;
+  private pauseButton!: Phaser.GameObjects.Text;
 
   constructor() {
     super('Game');
@@ -43,6 +46,7 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     this.state = 'running';
+    this.paused = false;
     this.distance = 0;
     this.speed = speedAt(0);
     this.runeCount = 0;
@@ -57,6 +61,18 @@ export class GameScene extends Phaser.Scene {
     this.fx = new Effects(this);
     this.hud = new Hud(this);
     new Controls(this, (a) => this.onAction(a));
+    this.buildPauseUi();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.repeat) return;
+      if (event.code !== 'KeyP' && event.code !== 'Escape') return;
+      event.preventDefault();
+      this.togglePause();
+    };
+    this.input.keyboard?.on('keydown', onKey);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.keyboard?.off('keydown', onKey);
+      if (this.paused) this.setWorldFrozen(false);
+    });
 
     // The menu tap already started the playlist. A restart keeps that song
     // instead of jumping back to the first track.
@@ -64,12 +80,74 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.fadeIn(350, 10, 19, 40);
   }
 
+  private buildPauseUi(): void {
+    const cx = GAME_W / 2;
+    this.pauseButton = this.add
+      .text(cx, 36, 'PAUSE', {
+        fontFamily: FONT,
+        fontSize: '18px',
+        fontStyle: '700',
+        color: '#f4e7c5',
+        backgroundColor: '#141c2ee6',
+        padding: { x: 12, y: 6 },
+      })
+      .setOrigin(0.5)
+      .setDepth(DEPTH.hud)
+      .setInteractive({ useHandCursor: true });
+    this.pauseButton.on('pointerup', () => this.togglePause());
+
+    const dim = this.add.rectangle(0, 0, GAME_W, GAME_H, 0x070b16, 0.55).setOrigin(0);
+    const title = this.add
+      .text(cx, GAME_H / 2 - 28, 'PAUSED', {
+        fontFamily: FONT,
+        fontSize: '64px',
+        fontStyle: '900',
+        color: '#f4e7c5',
+        stroke: '#070b16',
+        strokeThickness: 8,
+      })
+      .setOrigin(0.5);
+    const hint = this.add
+      .text(cx, GAME_H / 2 + 42, 'P    ·    Esc    ·    Tap', {
+        fontFamily: FONT,
+        fontSize: '22px',
+        fontStyle: '700',
+        color: '#d9a441',
+        stroke: '#070b16',
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5);
+    this.pauseOverlay = this.add.container(0, 0, [dim, title, hint]).setDepth(DEPTH.overlay).setVisible(false);
+    dim.setInteractive();
+    dim.on('pointerup', () => this.togglePause());
+  }
+
+  private togglePause(): void {
+    if (this.state !== 'running') return;
+    this.paused = !this.paused;
+    this.pauseOverlay.setVisible(this.paused);
+    this.pauseButton.setVisible(!this.paused);
+    this.setWorldFrozen(this.paused);
+    if (this.paused) Music.of(this).pause();
+    else Music.of(this).resume();
+  }
+
+  /** Stop tweens, timers, and particle animation without leaving the scene. */
+  private setWorldFrozen(frozen: boolean): void {
+    this.time.paused = frozen;
+    if (frozen) this.tweens.pauseAll();
+    else this.tweens.resumeAll();
+    this.children.each((child) => {
+      if (child instanceof Phaser.GameObjects.Particles.ParticleEmitter) child.active = !frozen;
+    });
+  }
+
   get score(): number {
     return Math.floor(this.distance) + this.runeScore;
   }
 
   private onAction(action: Action): void {
-    if (this.state !== 'running') return;
+    if (this.state !== 'running' || this.paused) return;
     switch (action) {
       case 'left':
         this.player.moveLeft();
@@ -87,6 +165,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, deltaMs: number): void {
+    if (this.paused) return;
     const dt = Math.min(deltaMs, 50) / 1000; // clamp so a tab-switch hitch can't teleport obstacles
 
     if (this.state === 'running') {
