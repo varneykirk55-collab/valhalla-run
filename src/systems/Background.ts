@@ -17,12 +17,15 @@ function newStreak(r = Phaser.Math.FloatBetween(20, 380)): Streak {
 }
 
 /**
- * Layered sky → aurora → distant mountains → fjord water → near cliffs → mist.
+ * Layered sky → aurora → far mountains → fjord water → mid mountains → cliffs →
+ * pine ridge → mist (the twilight fjord from the reference run screen).
  * Layers slide sideways by different amounts as the camera follows the player,
  * which gives the parallax depth; the mist also drifts with running speed.
  */
 export class Background {
   private readonly far: Phaser.GameObjects.Image;
+  private readonly mid: Phaser.GameObjects.Image;
+  private readonly pines: Phaser.GameObjects.Image;
   private readonly fjord: Phaser.GameObjects.Image;
   private readonly cliffs: Phaser.GameObjects.Image;
   private readonly mist: Phaser.GameObjects.TileSprite;
@@ -35,16 +38,19 @@ export class Background {
   constructor(scene: Phaser.Scene) {
     scene.add.image(0, 0, 'sky').setOrigin(0, 0).setDepth(DEPTH.sky);
     this.aurora = scene.add
-      .image(GAME_W / 2, 30, 'aurora')
+      .image(GAME_W / 2, 40, 'aurora')
       .setOrigin(0.5, 0)
       .setDepth(DEPTH.aurora)
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setAlpha(0.6);
-    scene.tweens.add({ targets: this.aurora, alpha: 0.25, duration: 4200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      .setAlpha(0.95);
+    scene.tweens.add({ targets: this.aurora, alpha: 0.6, duration: 4200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     this.far = scene.add.image(GAME_W / 2, 0, 'mtnFar').setOrigin(0.5, 1).setDepth(DEPTH.farMountains);
     this.fjord = scene.add.image(GAME_W / 2, 0, 'fjord').setOrigin(0.5, 1).setDepth(DEPTH.fjord);
+    // Fractional depths slot the new layers between the existing ones without touching DEPTH.
+    this.mid = scene.add.image(GAME_W / 2, 0, 'mtnMid').setOrigin(0.5, 1).setDepth(DEPTH.fjord + 0.5);
     this.cliffs = scene.add.image(GAME_W / 2, 0, 'cliffs').setOrigin(0.5, 1).setDepth(DEPTH.cliffs);
+    this.pines = scene.add.image(GAME_W / 2, 0, 'pineRidge').setOrigin(0.5, 1).setDepth(DEPTH.cliffs + 0.5);
     this.mist = scene.add.tileSprite(GAME_W / 2, 0, GAME_W, 180, 'mist').setOrigin(0.5, 1).setDepth(DEPTH.mist).setAlpha(0.9);
 
     // Above the fog, below every track object.
@@ -57,9 +63,12 @@ export class Background {
     const lift = proj.lift;
     this.mistScroll += dt * (10 + speed * 1.5);
 
-    this.far.setPosition(GAME_W / 2 - cam * 10, HORIZON_Y - 36 + lift * 0.35);
+    // Nearer layers slide further as the camera follows the lanes (parallax).
+    this.far.setPosition(GAME_W / 2 - cam * 8, HORIZON_Y - 36 + lift * 0.35);
     this.fjord.setPosition(GAME_W / 2 - cam * 14, HORIZON_Y + 8 + lift * 0.5);
+    this.mid.setPosition(GAME_W / 2 - cam * 18, HORIZON_Y - 2 + lift * 0.5);
     this.cliffs.setPosition(GAME_W / 2 - cam * 30, HORIZON_Y + 14 + lift * 0.6);
+    this.pines.setPosition(GAME_W / 2 - cam * 40, HORIZON_Y + 18 + lift * 0.7);
     this.mist.setPosition(GAME_W / 2, HORIZON_Y + 40 + lift * 0.8);
     this.mist.tilePositionX = cam * 45 + this.mistScroll;
     this.drawStreaks(dt, proj, speed);

@@ -2,19 +2,28 @@ import Phaser from 'phaser';
 import { DEPTH, GAME_H, GAME_W, HORIZON_Y } from '../config';
 import { Projection } from './Projection';
 
+/** Blue-grey cobbles with dark mortar and snowy edges (reference run screen). */
 const COLORS = {
-  pathA: 0x6e6259,
-  pathB: 0x645850,
-  stoneA: 0x9aa3ad,
-  stoneB: 0x7d858f,
-  laneLine: 0x3d332c,
+  mortar: 0x2e3654,
+  stones: [0x5d6a8c, 0x68759b, 0x535f80, 0x717ea4],
+  farStone: 0x5f6b8d,
+  snowA: 0xe6eefb,
+  snowB: 0xd3def3,
+  laneLine: 0x232a44,
 };
 
-const SEG = 2.4; // length of one paving band in world units
+const SEG = 1.2; // depth of one row of cobbles, world units
+const STONE_W = 0.5; // two cobbles per lane
+const DETAIL_Z = 45; // beyond this, rows are drawn as flat bands (too small to read)
 const FAR = 90;
 const NEAR = -2.8;
 
-/** The snowy ground and the 3-lane stone path, redrawn each frame in perspective. */
+/** Stable per-stone variation, tied to world position so cobbles don't flicker. */
+function hash(a: number, b: number): number {
+  return (Math.imul(a, 73856093) ^ Math.imul(b + 17, 19349663)) >>> 0;
+}
+
+/** The snowy ground and the 3-lane cobbled path, redrawn each frame in perspective. */
 export class Track {
   private readonly g: Phaser.GameObjects.Graphics;
   private readonly snow: Phaser.GameObjects.Image;
@@ -42,19 +51,44 @@ export class Track {
       g.fillPoints([proj.project(l0, z0), proj.project(l1, z0), proj.project(l1, z1), proj.project(l0, z1)], true);
     };
 
-    // Paving bands scroll toward the camera; parity is tied to world position so they don't flicker.
+    // Rows scroll toward the camera; each row's look comes from its world index.
     const offset = distance % SEG;
     const base = Math.floor(distance / SEG);
     for (let i = 0; ; i++) {
       const z0 = NEAR + i * SEG - offset;
       if (z0 > FAR) break;
       const z1 = z0 + SEG;
-      const odd = ((base + i) & 1) === 1;
-      quad(-1.5, 1.5, z0, z1, odd ? COLORS.pathA : COLORS.pathB);
-      quad(-1.72, -1.5, z0, z1, odd ? COLORS.stoneA : COLORS.stoneB);
-      quad(1.5, 1.72, z0, z1, odd ? COLORS.stoneB : COLORS.stoneA);
+      const row = base + i;
+      const h = hash(row, 0);
+
+      // snowy shoulders
+      quad(-1.8, -1.5, z0, z1, (row & 1) === 0 ? COLORS.snowA : COLORS.snowB);
+      quad(1.5, 1.8, z0, z1, (row & 1) === 0 ? COLORS.snowB : COLORS.snowA);
+
+      if (z0 > DETAIL_Z) {
+        quad(-1.5, 1.5, z0, z1, COLORS.farStone);
+        continue;
+      }
+
+      quad(-1.5, 1.5, z0, z1, COLORS.mortar);
+      // Running bond: every other row is offset by half a cobble.
+      const shift = (row & 1) === 1 ? STONE_W / 2 : 0;
+      const gapX = 0.035;
+      const gapZ = 0.08;
+      for (let k = -1; k < 6; k++) {
+        const l0 = Math.max(-1.5, -1.5 + k * STONE_W + shift);
+        const l1 = Math.min(1.5, -1.5 + (k + 1) * STONE_W + shift);
+        if (l1 - l0 < 0.05) continue;
+        const color = COLORS.stones[hash(row, k + 2) % COLORS.stones.length];
+        quad(l0 + gapX, l1 - gapX, z0 + gapZ, z1 - gapZ, color);
+      }
+
+      // drifted snow creeping onto the path edges
+      if (h % 3 === 0) quad(-1.5, -1.5 + 0.1 + (h % 7) * 0.02, z0 + 0.15, z1 - 0.1, COLORS.snowA);
+      if ((h >> 3) % 3 === 0) quad(1.5 - 0.1 - ((h >> 5) % 7) * 0.02, 1.5, z0 + 0.1, z1 - 0.15, COLORS.snowA);
     }
 
-    for (const l of [-0.5, 0.5]) quad(l - 0.03, l + 0.03, NEAR, FAR, COLORS.laneLine, 0.55);
+    // Faint lane grooves keep the three lanes readable.
+    for (const l of [-0.5, 0.5]) quad(l - 0.025, l + 0.025, NEAR, FAR, COLORS.laneLine, 0.3);
   }
 }
