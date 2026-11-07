@@ -57,5 +57,6 @@ src/
 
 - The world is a pseudo-3D track: objects have `lane`, `z` (distance ahead) and `elev`. Collisions test the swept z interval each frame, so nothing tunnels at high speed.
 - The runner is viewed from behind, matching the chase camera. Run and jump frames come from the in-place clips (`NorseRunner_FastRun_InPlace`, `NorseRunner_RunningJump_InPlace`) so the track, not the clip, moves her. Jump poses are planted on the ground; the physics hop supplies the height. There is no slide clip on the rig — slide uses a fast-run pose pitched into a forward dive.
+- Music is in `src/assets/music/` (six MP3s). The extended Iron Fjord loops on the title screen after the first press. Leaving the menu starts Iron Fjord (Warlike Version), then Shield Wall (1), Shield Wall (2), Shield Wall, and Shieldwall, and that list loops. There is no separate sound-effect track.
 - To swap in other real art, load an image with the same texture key in `BootScene.preload()` — generators skip keys that already exist.
 - Balancing lives in `config.ts` and `systems/Difficulty.ts`.

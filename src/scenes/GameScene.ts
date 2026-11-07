@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { Music } from '../audio/Music';
 import { PLAYER, RUNE_VALUE } from '../config';
 import { Obstacle } from '../entities/Obstacle';
 import { Player } from '../entities/Player';
@@ -57,6 +58,9 @@ export class GameScene extends Phaser.Scene {
     this.hud = new Hud(this);
     new Controls(this, (a) => this.onAction(a));
 
+    // The menu tap already started the playlist. A restart keeps that song
+    // instead of jumping back to the first track.
+    Music.of(this).playRun();
     this.cameras.main.fadeIn(350, 10, 19, 40);
   }
 

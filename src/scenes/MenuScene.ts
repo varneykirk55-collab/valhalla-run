@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { Music } from '../audio/Music';
 import { DEPTH, FONT, GAME_H, GAME_W } from '../config';
 import { RUNNER } from '../runner/art';
 import { Decor } from '../entities/Decor';
@@ -91,6 +92,11 @@ export class MenuScene extends Phaser.Scene {
         .setDepth(DEPTH.hud);
     }
 
+    // pointerdown is a user gesture, so the title theme can start before
+    // the matching pointerup leaves for the run.
+    this.input.on('pointerdown', () => {
+      if (!this.starting) Music.of(this).playMenu();
+    });
     this.input.once('pointerup', () => this.begin());
     this.input.keyboard?.once('keydown', () => this.begin());
   }
@@ -98,6 +104,7 @@ export class MenuScene extends Phaser.Scene {
   private begin(): void {
     if (this.starting) return;
     this.starting = true;
+    Music.of(this).playRun();
     this.cameras.main.fadeOut(260, 10, 19, 40);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('Game'));
   }

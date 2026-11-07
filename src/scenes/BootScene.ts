@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
+import { ALL_TRACKS } from '../audio/tracks';
 import jumpSheet from '../assets/runner/jump.png';
 import runSheet from '../assets/runner/run.png';
 import slideSheet from '../assets/runner/slide.png';
+import { GAME_W } from '../config';
 import { generateCharacterTextures } from '../gfx/characters';
 import { generatePropTextures } from '../gfx/props';
 import { generateSceneryTextures } from '../gfx/scenery';
@@ -18,10 +20,24 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
+    this.add.rectangle(GAME_W / 2, 500, 280, 10, 0x1c2436).setOrigin(0.5);
+    const fill = this.add.rectangle(GAME_W / 2 - 140, 500, 0, 10, 0xd9a441).setOrigin(0, 0.5);
+    this.add
+      .text(GAME_W / 2, 460, 'LOADING', {
+        fontFamily: 'Georgia, serif',
+        fontSize: '22px',
+        color: '#f4e7c5',
+      })
+      .setOrigin(0.5);
+    this.load.on('progress', (amount: number) => {
+      fill.width = 280 * amount;
+    });
+
     const frameConfig = { frameWidth: RUNNER.frameWidth, frameHeight: RUNNER.frameHeight };
     this.load.spritesheet('viking_run', runSheet, frameConfig);
     this.load.spritesheet('viking_jump', jumpSheet, frameConfig);
     this.load.image('viking_slide', slideSheet);
+    for (const track of ALL_TRACKS) this.load.audio(track.key, track.url);
   }
 
   create(): void {
