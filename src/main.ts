@@ -16,9 +16,8 @@ const config: Phaser.Types.Core.GameConfig = {
     height: GAME_H,
   },
   input: { activePointers: 2 },
-  // Stream the songs. Decoding every MP3 through Web Audio would expand
-  // about 20 MB of music into a much larger PCM buffer.
-  audio: { disableWebAudio: true },
+  // Web Audio stays on for the synthesised effects. The six songs are plain
+  // HTML audio elements, so they are not decoded into that context.
   render: { antialias: true },
   scene: [BootScene, MenuScene, GameScene],
 };

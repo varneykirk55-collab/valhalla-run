@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { ALL_TRACKS } from '../audio/tracks';
+import { Music } from '../audio/Music';
+import { sfx } from '../audio/Sfx';
 import jumpSheet from '../assets/runner/jump.png';
 import runSheet from '../assets/runner/run.png';
 import slideSheet from '../assets/runner/slide.png';
@@ -37,13 +38,14 @@ export class BootScene extends Phaser.Scene {
     this.load.spritesheet('viking_run', runSheet, frameConfig);
     this.load.spritesheet('viking_jump', jumpSheet, frameConfig);
     this.load.image('viking_slide', slideSheet);
-    for (const track of ALL_TRACKS) this.load.audio(track.key, track.url);
   }
 
   create(): void {
     generateSceneryTextures(this);
     generateCharacterTextures(this);
     generatePropTextures(this);
+    sfx(this).init();
+    Music.of(this).preload();
     this.scene.start('Menu');
   }
 }

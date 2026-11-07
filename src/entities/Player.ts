@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { sfx } from '../audio/Sfx';
 import { DEPTH, PLAYER, SPEED } from '../config';
 import { RUNNER } from '../runner/art';
 import { Projection } from '../systems/Projection';
@@ -45,11 +46,17 @@ export class Player {
   }
 
   moveLeft(): void {
-    if (this.lane > -1) this.lane--;
+    if (this.lane > -1) {
+      this.lane--;
+      sfx(this.scene).lane(-1);
+    }
   }
 
   moveRight(): void {
-    if (this.lane < 1) this.lane++;
+    if (this.lane < 1) {
+      this.lane++;
+      sfx(this.scene).lane(1);
+    }
   }
 
   jump(): void {
@@ -59,6 +66,7 @@ export class Player {
     this.jumpTime = 0;
     this.slideTimer = 0;
     this.slideQueued = false;
+    sfx(this.scene).jump();
   }
 
   /** On the ground: slide. In the air: slam down and slide on landing. */
@@ -67,6 +75,7 @@ export class Player {
       this.vh = Math.min(this.vh, PLAYER.fastFallVelocity);
       this.slideQueued = true;
     } else {
+      if (!this.sliding) sfx(this.scene).slide();
       this.slideTimer = PLAYER.slideTime;
     }
   }
@@ -82,9 +91,11 @@ export class Player {
         this.h = 0;
         this.vh = 0;
         this.airborne = false;
+        sfx(this.scene).land();
         if (this.slideQueued) {
           this.slideQueued = false;
           this.slideTimer = PLAYER.slideTime;
+          sfx(this.scene).slide();
         }
       }
     }

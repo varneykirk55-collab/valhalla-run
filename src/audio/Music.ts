@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { MENU_TRACK, RUN_TRACKS } from './tracks';
+import { ALL_TRACKS, MENU_TRACK, RUN_TRACKS, Track } from './tracks';
+import { unlockAudio } from './unlock';
 
 /**
  * Linear gain for the six songs. There is no separate effect bus; anything
@@ -8,9 +9,9 @@ import { MENU_TRACK, RUN_TRACKS } from './tracks';
 const VOLUME = 0.3;
 
 /**
- * Plays the six shipped songs one at a time from the audio tags Phaser
- * preloaded. Web Audio is off, so the tracks stream instead of being decoded
- * into one big buffer. The first play() has to run inside a tap or key
+ * Plays the six shipped songs one at a time through HTML audio elements.
+ * They stay out of Phaser's Web Audio cache, which is reserved for the
+ * synthesised effects. The first play() has to run inside a tap or key
  * handler; after that the playlist can advance on its own.
  */
 export class Music {
@@ -20,6 +21,8 @@ export class Music {
   /** True while a user pause is holding the current song. */
   private suspended = false;
   private tag: HTMLAudioElement | null = null;
+  /** HTML audio tags, kept out of Phaser's cache so Web Audio never decodes the songs. */
+  private readonly tags = new Map<string, HTMLAudioElement>();
   private readonly onEnded = (): void => {
     if (this.mode !== 'run' || !this.tag || this.tag.loop) return;
     this.runIndex = (this.runIndex + 1) % RUN_TRACKS.length;
@@ -36,6 +39,11 @@ export class Music {
 
   static of(scene: Phaser.Scene): Music {
     return scene.game.registry.get('music') as Music;
+  }
+
+  /** Start buffering every song. Does not decode them through Web Audio. */
+  preload(): void {
+    for (const track of ALL_TRACKS) this.tagFor(track.key);
   }
 
   /** Title theme. A later playRun from the same tap replaces it. */
@@ -70,6 +78,7 @@ export class Music {
   }
 
   private start(key: string, loop: boolean): void {
+    unlockAudio(this.game);
     this.suspended = false;
     const token = ++this.playToken;
     const next = this.tagFor(key);
@@ -103,9 +112,14 @@ export class Music {
   }
 
   private tagFor(key: string): HTMLAudioElement {
-    const cached = this.game.cache.audio.get(key) as HTMLAudioElement[] | undefined;
-    const tag = cached?.[0];
-    if (!tag) throw new Error(`Missing audio '${key}'`);
+    const existing = this.tags.get(key);
+    if (existing) return existing;
+    const track: Track | undefined = ALL_TRACKS.find((item) => item.key === key);
+    if (!track) throw new Error(`Missing audio '${key}'`);
+    const tag = new Audio();
+    tag.preload = 'auto';
+    tag.src = track.url;
+    this.tags.set(key, tag);
     return tag;
   }
 }
