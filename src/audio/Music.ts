@@ -1,7 +1,11 @@
 import Phaser from 'phaser';
 import { MENU_TRACK, RUN_TRACKS } from './tracks';
 
-const VOLUME = 0.72;
+/**
+ * Linear gain for the six songs. There is no separate effect bus; anything
+ * played at the HTML/Phaser default of 1 stays clearly louder than this.
+ */
+const VOLUME = 0.3;
 
 /**
  * Plays the six shipped songs one at a time from the audio tags Phaser
