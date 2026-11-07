@@ -1,6 +1,10 @@
 import Phaser from 'phaser';
 import { Music } from '../audio/Music';
 import { sfx } from '../audio/Sfx';
+import fallenTreeUrl from '../assets/props/fallenTree.png';
+import pineUrl from '../assets/props/pine.png';
+import rockUrl from '../assets/props/rock.png';
+import spikesUrl from '../assets/props/spikes.png';
 import jumpSheet from '../assets/runner/jump.png';
 import runSheet from '../assets/runner/run.png';
 import slideSheet from '../assets/runner/slide.png';
@@ -37,7 +41,12 @@ export class BootScene extends Phaser.Scene {
     const frameConfig = { frameWidth: RUNNER.frameWidth, frameHeight: RUNNER.frameHeight };
     this.load.spritesheet('viking_run', runSheet, frameConfig);
     this.load.spritesheet('viking_jump', jumpSheet, frameConfig);
-    this.load.image('viking_slide', slideSheet);
+    this.load.spritesheet('viking_slide', slideSheet, frameConfig);
+    // Real winter art. Generators skip any key that already exists.
+    this.load.image('pine', pineUrl);
+    this.load.image('fallenTree', fallenTreeUrl);
+    this.load.image('rock', rockUrl);
+    this.load.image('spikes', spikesUrl);
   }
 
   create(): void {

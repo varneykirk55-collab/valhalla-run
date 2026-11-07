@@ -1,0 +1,35 @@
+{
+  "frameWidth": 303,
+  "frameHeight": 430,
+  "frameCount": 8,
+  "originX": 0.5115511551155115,
+  "originY": 0.9484765369303741,
+  "durationSeconds": 1.5333333333333334,
+  "sourceFrameRange": [
+    1,
+    47
+  ],
+  "sampledFrames": [
+    1,
+    8,
+    14,
+    21,
+    27,
+    34,
+    40,
+    47
+  ],
+  "sourceFPS": 30,
+  "notes": "Rear orthographic view reconstructed against run.png frame 1, fixed union-fit camera and scale (widened vs run to avoid clipping lateral slide lean). Retargeted all 33 matching Mixamo bones by sampled armature-space pose matrices (source and master rest orientations differ at arms). Removed X/Z armature horizontal hips travel; retained relative vertical Y crouch; grounded the mesh once per frame to remove source global hop, no extra hop or screen translation. No game-side jump offset. Sheet is non-looping: play once during slide. Existing loader must change from image to spritesheet, 303x430, frames 0-7. All slide frames use one uniform scale; the lateral lean requires a wider camera than run, so the standing entry/exit is smaller than the run silhouette. Original masters were read-only. 33/33 source bones mapped; extra master Root supplies grounding.",
+  "perFrameGroundCorrectionRangeMeters": [
+    -0.0330574382096529,
+    0.11763677932322025
+  ],
+  "cameraOrthoScale": 1.7274428606033325,
+  "cameraLocation": [
+    0.014060255140066147,
+    2.977365732192993,
+    1.0763440132141113
+  ],
+  "animationFrameRate": 5.217391304347826
+}

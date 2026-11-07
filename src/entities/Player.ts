@@ -119,7 +119,12 @@ export class Player {
         frame: Math.min(RUNNER.jumpFrames - 1, Math.floor(u * RUNNER.jumpFrames)),
       };
     }
-    if (this.sliding) return { key: 'viking_slide' };
+    if (this.sliding) {
+      // Play the 8-frame slide once across the slide window (source clip is 1.53s).
+      const u = 1 - this.slideTimer / PLAYER.slideTime;
+      const frame = Math.min(RUNNER.slideFrames - 1, Math.max(0, Math.floor(u * RUNNER.slideFrames)));
+      return { key: 'viking_slide', frame };
+    }
     const frame = Math.floor((this.animTime / RUNNER.runCycle) * RUNNER.runFrames) % RUNNER.runFrames;
     return { key: 'viking_run', frame };
   }
@@ -146,10 +151,11 @@ export class Player {
     }
 
     // The baked run already bounces. Keep the feet planted on the ground anchor.
+    // Slide frames are framed wider, so they use a larger scale to match the run.
     this.sprite
       .setPosition(p.x, p.y)
       .setRotation((this.lane - this.x) * 0.25)
-      .setScale(RUNNER.scale)
+      .setScale(this.sliding ? RUNNER.slideScale : RUNNER.scale)
       .setAlpha(this.invuln > 0 && Math.floor(this.invuln * 20) % 2 === 0 ? 0.35 : 1);
 
     this.aura.setVisible(shieldOn);
