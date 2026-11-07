@@ -3,11 +3,15 @@ import { DEPTH, FONT, GAME_W } from '../config';
 
 type Emitter = Phaser.GameObjects.Particles.ParticleEmitter;
 
+/** Scene event Player emits on each foot plant: (x, y) = ground point under the runner. */
+export const STRIDE_EVENT = 'player-stride';
+
 /** Particle bursts, floating score text and ambient snowfall. */
 export class Effects {
   private readonly bursts = new Map<number, Emitter>();
   private readonly shards: Emitter;
   private readonly embers: Emitter;
+  private readonly footPuffs: Emitter;
 
   constructor(private readonly scene: Phaser.Scene) {
     this.shards = scene.add
@@ -34,6 +38,22 @@ export class Effects {
         emitting: false,
       })
       .setDepth(DEPTH.fx);
+
+    // Foot snow puffs: a couple of soft flakes kicked up on every stride.
+    this.footPuffs = scene.add
+      .particles(0, 0, 'flake', {
+        speedX: { min: -35, max: 35 },
+        speedY: { min: -55, max: -15 },
+        gravityY: 160, // kicked up, then drifting back down toward the camera
+        scale: { start: 1.6, end: 0.5 },
+        alpha: { start: 0.75, end: 0 },
+        lifespan: { min: 280, max: 420 },
+        emitting: false,
+      })
+      .setDepth(DEPTH.player + 1);
+    const onStride = (x: number, y: number) => this.footPuffs.explode(Phaser.Math.Between(1, 2), x, y - 4);
+    scene.events.on(STRIDE_EVENT, onStride);
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => scene.events.off(STRIDE_EVENT, onStride));
 
     scene.add
       .particles(0, 0, 'flake', {

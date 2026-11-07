@@ -135,13 +135,26 @@ function viking(c: Ctx, pose: Pose): void {
   helmet(c, 36, 32, 12);
 }
 
-/** Undead warrior shambling toward the player, axe raised. */
-function draugr(c: Ctx): void {
+/**
+ * Undead warrior shambling toward the player.
+ * `lurch` draws the second shuffle frame: left foot dragged up, body shifted
+ * ~4px sideways and the axe arm dipped, so alternating frames read as a lurch.
+ */
+function draugr(c: Ctx, lurch = false): void {
   const skin = '#7d9877';
-  box(c, 30, 108, 12, 40, 4, '#3b3a33');
-  box(c, 48, 108, 12, 40, 4, '#3b3a33');
-  box(c, 28, 142, 16, 8, 3, '#22211c');
-  box(c, 46, 142, 16, 8, 3, '#22211c');
+  if (lurch) {
+    box(c, 32, 108, 12, 34, 4, '#3b3a33'); // left leg dragged up
+    box(c, 52, 108, 12, 40, 4, '#3b3a33');
+    box(c, 30, 136, 16, 8, 3, '#22211c');
+    box(c, 50, 142, 16, 8, 3, '#22211c');
+  } else {
+    box(c, 30, 108, 12, 40, 4, '#3b3a33');
+    box(c, 48, 108, 12, 40, 4, '#3b3a33');
+    box(c, 28, 142, 16, 8, 3, '#22211c');
+    box(c, 46, 142, 16, 8, 3, '#22211c');
+  }
+  c.save();
+  if (lurch) c.translate(4, 0); // upper body sways with the shuffle
   // tattered cloak
   poly(c, [[16, 52], [74, 52], [80, 130], [70, 122], [62, 134], [52, 124], [42, 136], [32, 124], [22, 132], [10, 130]], '#26302c');
   // mail shirt
@@ -152,7 +165,13 @@ function draugr(c: Ctx): void {
   // left arm hanging, clawed
   box(c, 14, 58, 10, 40, 4, skin);
   poly(c, [[13, 96], [25, 96], [23, 104], [19, 100], [15, 104]], '#5f7a5a');
-  // right arm raised with axe
+  // right arm raised with axe (dipped slightly on the lurch frame)
+  c.save();
+  if (lurch) {
+    c.translate(71, 64);
+    c.rotate(0.12);
+    c.translate(-71, -64);
+  }
   box(c, 66, 30, 10, 34, 4, skin);
   c.strokeStyle = '#5b3d26';
   c.lineWidth = 4;
@@ -167,6 +186,7 @@ function draugr(c: Ctx): void {
   c.moveTo(88, 5);
   c.lineTo(90, 25);
   c.stroke();
+  c.restore();
   // head
   circle(c, 45, 38, 14, skin);
   poly(c, [[33, 44], [57, 44], [53, 60], [45, 66], [37, 60]], '#a7aaa2'); // ragged beard
@@ -190,6 +210,7 @@ function draugr(c: Ctx): void {
   c.fill();
   box(c, 29, 31, 32, 5, 2, '#4e3f31');
   box(c, 43, 31, 4, 10, 1, '#4e3f31');
+  c.restore();
 }
 
 /** Giant raven (Huginn & Muninn's angrier cousins). Two wing frames. */
@@ -229,7 +250,9 @@ export function generateCharacterTextures(scene: Phaser.Scene): void {
     makeTexture(scene, 'viking_jump', 72, 112, (c) => viking(c, 'jump'));
     makeTexture(scene, 'viking_slide', 72, 112, (c) => viking(c, 'slide'));
   }
-  makeTexture(scene, 'draugr', 92, 150, draugr);
+  // Two-frame draugr shuffle: 'draugr' (frame 0, unchanged) + 'draugr1' (lurch).
+  makeTexture(scene, 'draugr', 92, 150, (c) => draugr(c));
+  makeTexture(scene, 'draugr1', 92, 150, (c) => draugr(c, true));
   makeTexture(scene, 'raven0', 120, 72, (c) => raven(c, true));
   makeTexture(scene, 'raven1', 120, 72, (c) => raven(c, false));
 }

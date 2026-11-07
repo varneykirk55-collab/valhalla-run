@@ -1,6 +1,20 @@
 import Phaser from 'phaser';
-import { DEPTH, GAME_W, HORIZON_Y } from '../config';
+import { DEPTH, GAME_W, HORIZON_Y, SPEED } from '../config';
 import { Projection } from './Projection';
+
+/** One speed line: flies outward from the vanishing point along `angle`. */
+interface Streak {
+  angle: number;
+  r: number;
+}
+
+const STREAK_COUNT = 12;
+
+function newStreak(r = Phaser.Math.FloatBetween(20, 380)): Streak {
+  // Down-left or down-right of the horizon, keeping clear of the path's centre.
+  const a = Phaser.Math.FloatBetween(0.12, 0.42) * Math.PI;
+  return { angle: Math.random() < 0.5 ? a : Math.PI - a, r };
+}
 
 /**
  * Layered sky → aurora → distant mountains → fjord water → near cliffs → mist.
@@ -14,6 +28,9 @@ export class Background {
   private readonly mist: Phaser.GameObjects.TileSprite;
   private readonly aurora: Phaser.GameObjects.Image;
   private mistScroll = 0;
+  // Speed streaks: sparse radial lines whose alpha scales with run speed.
+  private readonly streakGfx: Phaser.GameObjects.Graphics;
+  private readonly streaks: Streak[] = [];
 
   constructor(scene: Phaser.Scene) {
     scene.add.image(0, 0, 'sky').setOrigin(0, 0).setDepth(DEPTH.sky);
@@ -29,6 +46,10 @@ export class Background {
     this.fjord = scene.add.image(GAME_W / 2, 0, 'fjord').setOrigin(0.5, 1).setDepth(DEPTH.fjord);
     this.cliffs = scene.add.image(GAME_W / 2, 0, 'cliffs').setOrigin(0.5, 1).setDepth(DEPTH.cliffs);
     this.mist = scene.add.tileSprite(GAME_W / 2, 0, GAME_W, 180, 'mist').setOrigin(0.5, 1).setDepth(DEPTH.mist).setAlpha(0.9);
+
+    // Above the fog, below every track object.
+    this.streakGfx = scene.add.graphics().setDepth(DEPTH.fog + 1).setBlendMode(Phaser.BlendModes.ADD);
+    for (let i = 0; i < STREAK_COUNT; i++) this.streaks.push(newStreak());
   }
 
   update(dt: number, proj: Projection, speed: number): void {
@@ -41,5 +62,27 @@ export class Background {
     this.cliffs.setPosition(GAME_W / 2 - cam * 30, HORIZON_Y + 14 + lift * 0.6);
     this.mist.setPosition(GAME_W / 2, HORIZON_Y + 40 + lift * 0.8);
     this.mist.tilePositionX = cam * 45 + this.mistScroll;
+    this.drawStreaks(dt, proj, speed);
+  }
+
+  /** Speed lines: invisible at start speed, subtle but readable near max speed. */
+  private drawStreaks(dt: number, proj: Projection, speed: number): void {
+    const g = this.streakGfx;
+    g.clear();
+    const t = Phaser.Math.Clamp((speed - SPEED.start) / (SPEED.max - SPEED.start), 0, 1);
+    const alpha = speed > 0 ? 0.03 + 0.22 * t : 0;
+    if (alpha <= 0) return;
+
+    const ox = GAME_W / 2 - proj.camX * 20;
+    const oy = HORIZON_Y + 6 + proj.lift;
+    g.lineStyle(1.5, 0xf2f6ff, alpha);
+    for (const s of this.streaks) {
+      s.r += dt * (60 + speed * 10) * (0.4 + s.r / 160); // accelerate outward like perspective
+      const len = 8 + s.r * 0.14;
+      if (s.r > 420) Object.assign(s, newStreak(Phaser.Math.FloatBetween(10, 40)));
+      const cx = Math.cos(s.angle);
+      const cy = Math.sin(s.angle);
+      g.lineBetween(ox + cx * s.r, oy + cy * s.r * 0.6, ox + cx * (s.r + len), oy + cy * (s.r + len) * 0.6);
+    }
   }
 }

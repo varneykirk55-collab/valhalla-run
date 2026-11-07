@@ -9,7 +9,8 @@ export const OBSTACLES: Record<ObstacleKind, ObstacleDef> = {
   // A trunk wedged across two boulders: slide under it.
   fallenTree: { frames: ['fallenTree'], frameRate: 0, elev: 0, originY: 1, span: [0.55, 1.1], hitDepth: 0.45, approach: 0, avoid: 'slide' },
   raven: { frames: ['raven0', 'raven1'], frameRate: 7, elev: 1.05, originY: 0.5, span: [0.75, 1.35], hitDepth: 0.4, approach: 4, avoid: 'slide' },
-  draugr: { frames: ['draugr'], frameRate: 0, elev: 0, originY: 1, span: [0, 1.3], hitDepth: 0.4, approach: 2.5, avoid: 'lane' },
+  // Two-frame shuffle, alternating slowly.
+  draugr: { frames: ['draugr', 'draugr1'], frameRate: 3.5, elev: 0, originY: 1, span: [0, 1.3], hitDepth: 0.4, approach: 2.5, avoid: 'lane' },
 };
 
 export class Obstacle extends TrackEntity {
@@ -40,8 +41,9 @@ export class Obstacle extends TrackEntity {
     let bob = 0;
     if (this.kind === 'raven') bob = Math.sin(this.t * 5) * 0.06;
     if (this.kind === 'draugr') {
-      bob = Math.abs(Math.sin(this.t * 7)) * 0.04;
-      this.sprite.setRotation(Math.sin(this.t * 7) * 0.05);
+      // Frames now carry the lurch; keep a small bob and only a hint of sway.
+      bob = Math.abs(Math.sin(this.t * 7)) * 0.03;
+      this.sprite.setRotation(Math.sin(this.t * 3.5) * 0.02);
     }
     super.render(proj, bob);
   }

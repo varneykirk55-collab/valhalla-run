@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { DEPTH, PLAYER, SPEED } from '../config';
 import { RUNNER } from '../runner/art';
+import { STRIDE_EVENT } from '../systems/Effects';
 import { Projection } from '../systems/Projection';
 
 export class Player {
@@ -21,6 +22,8 @@ export class Player {
   private animTime = 0;
   /** Seconds since leaving the ground. Drives the jump sheet. */
   private jumpTime = 0;
+  /** Half-cycle index of the run; a change means a foot just planted (drives snow puffs). */
+  private lastStride = -1;
   private readonly sprite: Phaser.GameObjects.Image;
   private readonly shadow: Phaser.GameObjects.Image;
   private readonly aura: Phaser.GameObjects.Image;
@@ -126,6 +129,13 @@ export class Player {
       .setAlpha(Math.max(0.15, 0.6 - this.h * 0.2));
 
     if (!this.alive) return; // crash tween owns the sprite now
+
+    // Foot snow puffs: emit once per foot plant (two per run cycle), only while running on the ground.
+    const stride = Math.floor((this.animTime / RUNNER.runCycle) * 2);
+    if (stride !== this.lastStride) {
+      this.lastStride = stride;
+      if (!this.airborne && !this.sliding) this.scene.events.emit(STRIDE_EVENT, ground.x, ground.y);
+    }
 
     const p = proj.project(this.x, 0, this.h);
     const pose = this.pose();
