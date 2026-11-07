@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { WINTER_SCALE } from '../gfx/props';
 import { ObstacleDef, ObstacleKind } from '../types';
 import { Projection } from '../systems/Projection';
 import { TrackEntity } from './TrackEntity';
@@ -29,6 +30,7 @@ export class Obstacle extends TrackEntity {
     this.def = OBSTACLES[kind];
     this.approach = this.def.approach;
     this.t = Math.random() * 2;
+    if (kind === 'rock' || kind === 'spikes' || kind === 'fallenTree') this.baseScale = WINTER_SCALE[kind];
   }
 
   update(dt: number, speed: number): void {

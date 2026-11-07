@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { Music } from './audio/Music';
 import { GAME_H, GAME_W } from './config';
 import { BootScene } from './scenes/BootScene';
 import { MenuScene } from './scenes/MenuScene';
@@ -17,6 +18,8 @@ const config: Phaser.Types.Core.GameConfig = {
     height: GAME_H,
   },
   input: { activePointers: 2 },
+  // Web Audio stays on for the synthesised effects. The six songs are plain
+  // HTML audio elements, so they are not decoded into that context.
   render: { antialias: true },
   scene: [BootScene, MenuScene, GameScene, PauseScene],
 };
@@ -34,7 +37,7 @@ async function start(): Promise<void> {
   } catch {
     // Fallback faces are fine.
   }
-  new Phaser.Game(config);
+  Music.install(new Phaser.Game(config));
 }
 
 start();

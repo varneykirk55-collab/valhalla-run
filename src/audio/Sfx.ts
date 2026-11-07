@@ -1,8 +1,14 @@
 import Phaser from 'phaser';
 import { RECIPES, renderBuffer } from './synth';
+import { unlockAudio } from './unlock';
 
-/** Master SFX level, leaving headroom for music later. */
-const MASTER = 0.42;
+/**
+ * Master SFX level. The songs sit at 0.3, so this stays at 1 and the
+ * per-sound trims below are the levels that actually play. The old 0.42
+ * trim was for a build with no music; under that trim a jump was only 0.21,
+ * quieter than the song.
+ */
+const MASTER = 1;
 const MUTE_KEY = 'valhalla-sfx-muted';
 
 /** Relative volume per sound key (multiplied by MASTER). */
@@ -71,6 +77,7 @@ class Sfx {
 
   private play(key: string, config: Phaser.Types.Sound.SoundConfig = {}): void {
     if (!this.game.cache.audio.exists(key)) return;
+    unlockAudio(this.game);
     const volume = MASTER * (VOLUME[key] ?? 1) * (config.volume ?? 1);
     this.game.sound.play(key, { ...config, volume });
   }

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { Music } from '../audio/Music';
 import { DEPTH, GAME_W } from '../config';
 import { RUNNER } from '../runner/art';
 import { sfx } from '../audio/Sfx';
@@ -55,6 +56,12 @@ export class MenuScene extends Phaser.Scene {
 
     this.buildLogo();
     this.buildMenu();
+
+    // Music (merged from the music branch): pointerdown is a user gesture, so the
+    // title theme can start; the RUN tap then switches to the run playlist.
+    this.input.on('pointerdown', () => {
+      if (!this.starting) Music.of(this).playMenu();
+    });
 
     // Keyboard: Space / Enter start the run (ignored while a panel is open).
     const keyStart = () => !this.modal && this.begin();
@@ -203,7 +210,8 @@ export class MenuScene extends Phaser.Scene {
   private begin(): void {
     if (this.starting) return;
     this.starting = true;
-    sfx(this).uiConfirm(); // SFX: UI confirm (start run)
+    sfx(this).uiConfirm();
+    Music.of(this).playRun();
     this.cameras.main.fadeOut(260, 10, 19, 40);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('Game'));
   }

@@ -1,0 +1,66 @@
+{
+  "source_folder": "C:\\Users\\aresg\\OneDrive\\Desktop\\VALHALLA RUN MUSIC",
+  "encoding": "MP3 128 kbps stereo, cover art stripped for web size",
+  "tracks": [
+    {
+      "file": "Iron Fjord (Extended with Nordic Chants).mp3",
+      "original": "Iron Fjord (Extended with Nordic Chants).wav",
+      "original_bytes": 69255044,
+      "mp3_bytes": 5693615,
+      "duration_sec": 355.78,
+      "title": null,
+      "artist": null,
+      "sha256_16": "d43c104622397fd4"
+    },
+    {
+      "file": "Iron Fjord (Warlike Version).mp3",
+      "original": "Iron Fjord (Warlike Version).wav",
+      "original_bytes": 35236536,
+      "mp3_bytes": 2860928,
+      "duration_sec": 178.78,
+      "title": null,
+      "artist": null,
+      "sha256_16": "b55056ec7c99d0e7"
+    },
+    {
+      "file": "Shield Wall (1).mp3",
+      "original": "Shield Wall (1).wav",
+      "original_bytes": 35653986,
+      "mp3_bytes": 2888175,
+      "duration_sec": 180.48,
+      "title": null,
+      "artist": null,
+      "sha256_16": "d01793ba76bc032b"
+    },
+    {
+      "file": "Shield Wall (2).mp3",
+      "original": "Shield Wall (2).wav",
+      "original_bytes": 35569574,
+      "mp3_bytes": 2882031,
+      "duration_sec": 180.1,
+      "title": null,
+      "artist": null,
+      "sha256_16": "b21fbf71e389e49d"
+    },
+    {
+      "file": "Shield Wall.mp3",
+      "original": "Shield Wall.wav",
+      "original_bytes": 35015196,
+      "mp3_bytes": 2837871,
+      "duration_sec": 177.34,
+      "title": null,
+      "artist": null,
+      "sha256_16": "09c75e08e80081fa"
+    },
+    {
+      "file": "Shieldwall.mp3",
+      "original": "Shieldwall.wav",
+      "original_bytes": 35071398,
+      "mp3_bytes": 2839790,
+      "duration_sec": 177.46,
+      "title": null,
+      "artist": null,
+      "sha256_16": "7549c7cb0bd1c1d5"
+    }
+  ]
+}

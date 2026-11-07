@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { WINTER_SCALE } from '../gfx/props';
 import { TrackEntity } from './TrackEntity';
 
 export type DecorKind = 'pine' | 'runestone';
@@ -7,7 +8,7 @@ export type DecorKind = 'pine' | 'runestone';
 export class Decor extends TrackEntity {
   constructor(scene: Phaser.Scene, kind: DecorKind, laneX: number, z: number) {
     super(scene, kind, laneX, z, 0, 1);
-    this.baseScale = kind === 'pine' ? Phaser.Math.FloatBetween(0.85, 1.35) : 1;
+    this.baseScale = kind === 'pine' ? WINTER_SCALE.pine * Phaser.Math.FloatBetween(0.85, 1.35) : 1;
     if (Math.random() < 0.5) this.sprite.setFlipX(true);
   }
 }

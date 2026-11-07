@@ -1,6 +1,19 @@
 import Phaser from 'phaser';
 import { Ctx, Pt, TAU, box, circle, makeTexture, poly, polyline, rgba, vGradient } from './canvas';
 
+/**
+ * On-screen scale for the baked winter sprites at z = 0.
+ * Native textures are several times larger than the old procedural art;
+ * these factors keep a rock inside one lane and put the fallen log's gap
+ * just above a slide.
+ */
+export const WINTER_SCALE = {
+  pine: 200 / 548,
+  rock: 150 / 534,
+  spikes: 120 / 390,
+  fallenTree: 180 / 325,
+} as const;
+
 // ---- Obstacles ------------------------------------------------------------
 
 function rock(c: Ctx, w: number, h: number): void {

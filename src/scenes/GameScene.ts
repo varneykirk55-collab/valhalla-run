@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { Music } from '../audio/Music';
 import { PLAYER, RUNE_VALUE } from '../config';
 import { Obstacle } from '../entities/Obstacle';
 import { Player } from '../entities/Player';
@@ -68,6 +69,9 @@ export class GameScene extends Phaser.Scene {
       this.input.keyboard?.off('keydown-P', keyPause);
     });
 
+    // The menu tap already started the playlist. A restart keeps that song
+    // instead of jumping back to the first track.
+    Music.of(this).playRun();
     this.cameras.main.fadeIn(350, 10, 19, 40);
   }
 
@@ -76,6 +80,9 @@ export class GameScene extends Phaser.Scene {
     if (this.state !== 'running' || this.scene.isPaused()) return;
     const resumedAt = (this.registry.get(RESUMED_AT) as number | undefined) ?? -Infinity;
     if (this.game.loop.time - resumedAt < 250) return; // same key press that just resumed
+    // Scene pause freezes the world, tweens, timers and particles; songs and effects pause too.
+    Music.of(this).pause();
+    this.game.sound.pauseAll();
     this.scene.pause();
     this.scene.launch('Pause');
   }
@@ -216,6 +223,7 @@ export class GameScene extends Phaser.Scene {
           },
           onMenu: () => {
             this.cameras.main.fadeOut(220, 10, 19, 40);
+            Music.of(this).playMenu(); // runs inside the tap / key handler, so playback is allowed
             this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('Menu'));
           },
         },

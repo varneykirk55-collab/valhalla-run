@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { Music } from '../audio/Music';
 import { sfx } from '../audio/Sfx';
 import { NorseButton, Modal } from '../ui/components';
 
@@ -71,6 +72,8 @@ export class PauseScene extends Phaser.Scene {
     if (this.leaving) return;
     this.leaving = true;
     this.registry.set(RESUMED_AT, this.game.loop.time);
+    Music.of(this).resume();
+    this.game.sound.resumeAll();
     this.scene.resume('Game');
     this.scene.stop();
   }
@@ -78,6 +81,8 @@ export class PauseScene extends Phaser.Scene {
   private toMenu(): void {
     if (this.leaving) return;
     this.leaving = true;
+    this.game.sound.resumeAll();
+    Music.of(this).playMenu(); // inside the tap / key handler, so playback is allowed
     this.scene.stop('Game');
     this.scene.start('Menu');
   }
