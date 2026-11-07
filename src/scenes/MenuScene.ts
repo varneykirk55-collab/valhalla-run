@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { DEPTH, FONT, GAME_H, GAME_W } from '../config';
+import { RUNNER } from '../runner/art';
 import { Decor } from '../entities/Decor';
 import { RUNE_COLORS } from '../gfx/props';
 import { Background } from '../systems/Background';
@@ -34,7 +35,11 @@ export class MenuScene extends Phaser.Scene {
 
     const ground = this.proj.project(0, 0, 0);
     this.add.image(ground.x, ground.y, 'shadow').setDepth(DEPTH.shadow).setAlpha(0.55);
-    this.hero = this.add.image(ground.x, ground.y, 'viking_run0').setOrigin(0.5, 1).setDepth(DEPTH.player);
+    this.hero = this.add
+      .image(ground.x, ground.y, 'viking_run', 0)
+      .setOrigin(RUNNER.originX, RUNNER.originY)
+      .setScale(RUNNER.scale)
+      .setDepth(DEPTH.player);
 
     // Darken the top so the title reads over the aurora.
     const shade = this.add.graphics().setDepth(DEPTH.hud - 1);
@@ -108,6 +113,8 @@ export class MenuScene extends Phaser.Scene {
     }
     this.background.update(dt, this.proj, 3);
     this.track.draw(this.proj, this.drift);
-    this.hero.setTexture(Math.floor(this.drift * 1.6) % 2 ? 'viking_run1' : 'viking_run0');
+    // A slow jog: drift advances at 5 units/second (see above).
+    const frame = Math.floor(this.drift * 1.5) % RUNNER.runFrames;
+    if (this.hero.frame.name !== String(frame)) this.hero.setTexture('viking_run', frame);
   }
 }

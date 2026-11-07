@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { DEPTH, PLAYER } from '../config';
+import { DEPTH, PLAYER, SPEED } from '../config';
+import { RUNNER } from '../runner/art';
 import { Projection } from '../systems/Projection';
 
 export class Player {
@@ -16,6 +17,10 @@ export class Player {
   private slideTimer = 0;
   private slideQueued = false;
   private runClock = 0;
+  /** Seconds of run-cycle playback, scaled with forward speed. */
+  private animTime = 0;
+  /** Seconds since leaving the ground. Drives the jump sheet. */
+  private jumpTime = 0;
   private readonly sprite: Phaser.GameObjects.Image;
   private readonly shadow: Phaser.GameObjects.Image;
   private readonly aura: Phaser.GameObjects.Image;
@@ -28,7 +33,11 @@ export class Player {
       .setBlendMode(Phaser.BlendModes.ADD)
       .setTint(0xc79bff)
       .setVisible(false);
-    this.sprite = scene.add.image(0, 0, 'viking_run0').setOrigin(0.5, 1).setDepth(DEPTH.player);
+    this.sprite = scene.add
+      .image(0, 0, 'viking_run', 0)
+      .setOrigin(RUNNER.originX, RUNNER.originY)
+      .setScale(RUNNER.scale)
+      .setDepth(DEPTH.player);
   }
 
   get sliding(): boolean {
@@ -47,6 +56,7 @@ export class Player {
     if (this.airborne) return;
     this.airborne = true;
     this.vh = PLAYER.jumpVelocity;
+    this.jumpTime = 0;
     this.slideTimer = 0;
     this.slideQueued = false;
   }
@@ -80,7 +90,27 @@ export class Player {
     }
     if (this.slideTimer > 0) this.slideTimer -= dt;
     if (this.invuln > 0) this.invuln -= dt;
-    this.runClock += dt * 9 * (speed / 13);
+    const rate = speed / SPEED.start;
+    this.runClock += dt * 9 * rate;
+    this.animTime += dt * rate;
+    if (this.airborne) this.jumpTime += dt;
+    else this.jumpTime = 0;
+  }
+
+  /** Run, jump, or slide frame. Jump playback follows airtime, not the clip's own hop. */
+  private pose(): { key: string; frame?: number } {
+    if (this.airborne) {
+      const airtime = (2 * PLAYER.jumpVelocity) / PLAYER.gravity;
+      let u = Math.min(0.999, this.jumpTime / airtime);
+      if (this.vh < 0) u = Math.max(u, 0.5);
+      return {
+        key: 'viking_jump',
+        frame: Math.min(RUNNER.jumpFrames - 1, Math.floor(u * RUNNER.jumpFrames)),
+      };
+    }
+    if (this.sliding) return { key: 'viking_slide' };
+    const frame = Math.floor((this.animTime / RUNNER.runCycle) * RUNNER.runFrames) % RUNNER.runFrames;
+    return { key: 'viking_run', frame };
   }
 
   /** Vertical hitbox [bottom, top] in units. */
@@ -98,23 +128,24 @@ export class Player {
     if (!this.alive) return; // crash tween owns the sprite now
 
     const p = proj.project(this.x, 0, this.h);
-    let key = 'viking_run0';
-    if (this.airborne) key = 'viking_jump';
-    else if (this.sliding) key = 'viking_slide';
-    else if (Math.floor(this.runClock) % 2 === 1) key = 'viking_run1';
-    if (this.sprite.texture.key !== key) this.sprite.setTexture(key);
+    const pose = this.pose();
+    const frameName = pose.frame == null ? undefined : String(pose.frame);
+    if (this.sprite.texture.key !== pose.key || (frameName != null && this.sprite.frame.name !== frameName)) {
+      this.sprite.setTexture(pose.key, pose.frame);
+    }
 
-    const bob = !this.airborne && !this.sliding ? -Math.abs(Math.sin(this.runClock * Math.PI)) * 4 : 0;
+    // The baked run already bounces. Keep the feet planted on the ground anchor.
     this.sprite
-      .setPosition(p.x, p.y + bob)
-      .setRotation((this.lane - this.x) * 0.3)
-      .setScale(1, this.vh > 0 ? 1.05 : 1)
+      .setPosition(p.x, p.y)
+      .setRotation((this.lane - this.x) * 0.25)
+      .setScale(RUNNER.scale)
       .setAlpha(this.invuln > 0 && Math.floor(this.invuln * 20) % 2 === 0 ? 0.35 : 1);
 
     this.aura.setVisible(shieldOn);
     if (shieldOn) {
       const pulse = 1.05 + Math.sin(this.runClock * 0.8) * 0.06;
-      this.aura.setPosition(p.x, p.y - (this.sliding ? 40 : 66)).setScale(pulse);
+      const body = this.sprite.displayHeight * this.sprite.originY;
+      this.aura.setPosition(p.x, p.y - body * (this.sliding ? 0.32 : 0.5)).setScale(pulse * (this.sliding ? 0.82 : 1));
     }
   }
 

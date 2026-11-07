@@ -222,10 +222,13 @@ function raven(c: Ctx, wingsUp: boolean): void {
 }
 
 export function generateCharacterTextures(scene: Phaser.Scene): void {
-  makeTexture(scene, 'viking_run0', 72, 112, (c) => viking(c, 'run0'));
-  makeTexture(scene, 'viking_run1', 72, 112, (c) => viking(c, 'run1'));
-  makeTexture(scene, 'viking_jump', 72, 112, (c) => viking(c, 'jump'));
-  makeTexture(scene, 'viking_slide', 72, 112, (c) => viking(c, 'slide'));
+  // Baked runner sheets (BootScene.preload) replace the procedural hero.
+  if (!scene.textures.exists('viking_run')) {
+    makeTexture(scene, 'viking_run0', 72, 112, (c) => viking(c, 'run0'));
+    makeTexture(scene, 'viking_run1', 72, 112, (c) => viking(c, 'run1'));
+    makeTexture(scene, 'viking_jump', 72, 112, (c) => viking(c, 'jump'));
+    makeTexture(scene, 'viking_slide', 72, 112, (c) => viking(c, 'slide'));
+  }
   makeTexture(scene, 'draugr', 92, 150, draugr);
   makeTexture(scene, 'raven0', 120, 72, (c) => raven(c, true));
   makeTexture(scene, 'raven1', 120, 72, (c) => raven(c, false));
