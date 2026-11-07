@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { sfx } from '../audio/Sfx';
 import { DEPTH, PLAYER, SPEED } from '../config';
 import { RUNNER } from '../runner/art';
 import { STRIDE_EVENT } from '../systems/Effects';
@@ -48,11 +49,17 @@ export class Player {
   }
 
   moveLeft(): void {
-    if (this.lane > -1) this.lane--;
+    if (this.lane > -1) {
+      this.lane--;
+      sfx(this.scene).lane(-1); // SFX: lane change
+    }
   }
 
   moveRight(): void {
-    if (this.lane < 1) this.lane++;
+    if (this.lane < 1) {
+      this.lane++;
+      sfx(this.scene).lane(1); // SFX: lane change
+    }
   }
 
   jump(): void {
@@ -62,6 +69,7 @@ export class Player {
     this.jumpTime = 0;
     this.slideTimer = 0;
     this.slideQueued = false;
+    sfx(this.scene).jump(); // SFX: jump
   }
 
   /** On the ground: slide. In the air: slam down and slide on landing. */
@@ -70,6 +78,7 @@ export class Player {
       this.vh = Math.min(this.vh, PLAYER.fastFallVelocity);
       this.slideQueued = true;
     } else {
+      if (!this.sliding) sfx(this.scene).slide(); // SFX: slide start (not on re-swipe mid-slide)
       this.slideTimer = PLAYER.slideTime;
     }
   }
@@ -85,9 +94,11 @@ export class Player {
         this.h = 0;
         this.vh = 0;
         this.airborne = false;
+        sfx(this.scene).land(); // SFX: land
         if (this.slideQueued) {
           this.slideQueued = false;
           this.slideTimer = PLAYER.slideTime;
+          sfx(this.scene).slide(); // SFX: slide start (queued slam-slide)
         }
       }
     }

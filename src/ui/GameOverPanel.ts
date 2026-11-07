@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
 import { DEPTH, FONT, GAME_H, GAME_W } from '../config';
 import { RunResult } from '../types';
+import { sfx } from '../audio/Sfx';
 
 /** "You have fallen" card. Tap / Space / Enter restarts after a short lockout. */
 export function showGameOver(scene: Phaser.Scene, result: RunResult, onRestart: () => void): void {
+  sfx(scene).uiFail(); // SFX: game over panel appears
   const cx = GAME_W / 2;
   const cy = GAME_H / 2 - 20;
   const items: Phaser.GameObjects.GameObject[] = [];
@@ -48,6 +50,7 @@ export function showGameOver(scene: Phaser.Scene, result: RunResult, onRestart: 
   const restart = () => {
     if (done) return;
     done = true;
+    sfx(scene).uiConfirm(); // SFX: UI confirm (play again)
     scene.input.off('pointerup', restart);
     scene.input.keyboard?.off('keydown-SPACE', restart);
     scene.input.keyboard?.off('keydown-ENTER', restart);

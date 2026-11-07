@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { DEPTH, FONT, GAME_H, GAME_W } from '../config';
 import { RUNNER } from '../runner/art';
+import { sfx } from '../audio/Sfx';
 import { Decor } from '../entities/Decor';
 import { RUNE_COLORS } from '../gfx/props';
 import { Background } from '../systems/Background';
@@ -98,6 +99,7 @@ export class MenuScene extends Phaser.Scene {
   private begin(): void {
     if (this.starting) return;
     this.starting = true;
+    sfx(this).uiConfirm(); // SFX: UI confirm (start run)
     this.cameras.main.fadeOut(260, 10, 19, 40);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('Game'));
   }

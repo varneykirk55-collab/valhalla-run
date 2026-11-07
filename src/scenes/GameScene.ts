@@ -15,6 +15,7 @@ import { loadBest, saveBest } from '../systems/Storage';
 import { Track } from '../systems/Track';
 import { Action } from '../types';
 import { Hud } from '../ui/Hud';
+import { sfx } from '../audio/Sfx';
 import { showGameOver } from '../ui/GameOverPanel';
 
 type State = 'running' | 'dead';
@@ -125,11 +126,13 @@ export class GameScene extends Phaser.Scene {
     if (r.kind === 'basic') {
       const value = RUNE_VALUE * (this.powers.active('double') ? 2 : 1);
       this.runeCount++;
+      sfx(this).rune(); // SFX: rune collect
       this.runeScore += value;
       this.fx.collect(pos.x, pos.y, runeColor('basic'));
       this.fx.floatText(pos.x, pos.y - 20, `+${value}`, this.powers.active('double') ? RUNE_COLORS.double : RUNE_COLORS.basic);
     } else {
       this.powers.activate(r.kind);
+      sfx(this).power(); // SFX: power-up collect
       this.fx.collect(pos.x, pos.y, runeColor(r.kind), true);
       this.fx.floatText(pos.x, pos.y - 30, POWER_LABELS[r.kind], RUNE_COLORS[r.kind], 24);
       this.cameras.main.flash(120, 255, 240, 200);
@@ -162,6 +165,7 @@ export class GameScene extends Phaser.Scene {
     this.player.invuln = PLAYER.invulnTime;
     const pos = this.proj.project(o.lane, Math.max(o.z, 0), (o.def.span[0] + o.def.span[1]) / 2);
     this.fx.smash(pos.x, pos.y);
+    sfx(this).smash(); // SFX: shield smash
     this.cameras.main.shake(140, 0.006);
     o.destroy();
   }
@@ -170,6 +174,7 @@ export class GameScene extends Phaser.Scene {
 
   private die(): void {
     this.state = 'dead';
+    sfx(this).crash(); // SFX: death / crash
     const at = this.player.crash();
     this.fx.crash(at.x, at.y);
     this.cameras.main.shake(320, 0.014);

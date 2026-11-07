@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import jumpSheet from '../assets/runner/jump.png';
 import runSheet from '../assets/runner/run.png';
 import slideSheet from '../assets/runner/slide.png';
+import { sfx } from '../audio/Sfx';
 import { generateCharacterTextures } from '../gfx/characters';
 import { generatePropTextures } from '../gfx/props';
 import { generateSceneryTextures } from '../gfx/scenery';
@@ -28,6 +29,7 @@ export class BootScene extends Phaser.Scene {
     generateSceneryTextures(this);
     generateCharacterTextures(this);
     generatePropTextures(this);
+    sfx(this).init(); // synthesise all SFX clips into the audio cache
     this.scene.start('Menu');
   }
 }
