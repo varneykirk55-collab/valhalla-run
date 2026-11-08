@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { depthForZ, fadeForZ } from '../config';
 import { WINTER_SCALE } from '../gfx/props';
 import { ObstacleDef, ObstacleKind } from '../types';
 import { Projection } from '../systems/Projection';
@@ -15,6 +16,20 @@ export const OBSTACLES: Record<ObstacleKind, ObstacleDef> = {
   draugr: { frames: ['draugr', 'draugr1'], frameRate: 3.5, elev: 0, originY: 1, span: [0, 1.3], hitDepth: 0.4, approach: 2.5, avoid: 'lane' },
 };
 
+/**
+ * Facing by type. 'slope': lies along the path edge's perspective slope, tilted
+ * toward the vanishing point by lane (side lanes only; the centre lane's slope is flat).
+ * 'player' / 'none': upright, no base rotation.
+ */
+const FACING: Record<ObstacleKind, 'slope' | 'player' | 'none'> = {
+  rock: 'none',
+  spikes: 'none',
+  fallenTree: 'slope',
+  raven: 'player',
+  draugr: 'player',
+};
+const SLOPE_TILT = Phaser.Math.DegToRad(17);
+
 export class Obstacle extends TrackEntity {
   readonly kind: ObstacleKind;
   readonly def: ObstacleDef;
@@ -23,6 +38,9 @@ export class Obstacle extends TrackEntity {
   private frame = 0;
   /** Draugr growls once per approach. */
   private growled = false;
+  private readonly baseRotation: number;
+  /** Dark ellipse that grounds the fallen log. */
+  private readonly contactShadow?: Phaser.GameObjects.Image;
 
   constructor(scene: Phaser.Scene, kind: ObstacleKind, lane: number, z: number) {
     super(scene, OBSTACLES[kind].frames[0], lane, z, OBSTACLES[kind].elev, OBSTACLES[kind].originY);
@@ -31,6 +49,20 @@ export class Obstacle extends TrackEntity {
     this.approach = this.def.approach;
     this.t = Math.random() * 2;
     if (kind === 'rock' || kind === 'spikes' || kind === 'fallenTree') this.baseScale = WINTER_SCALE[kind];
+
+    // Left lane: right end raised (follows the left edge rising to the horizon); right lane mirrored.
+    this.baseRotation = FACING[kind] === 'slope' ? Math.sign(lane) * SLOPE_TILT : 0;
+    this.sprite.setRotation(this.baseRotation);
+    if (kind === 'fallenTree') {
+      // Slightly darker underside, and a contact shadow so the log sits on the snow.
+      this.sprite.setTint(0xffffff, 0xffffff, 0xb4bccf, 0xb4bccf);
+      this.contactShadow = scene.add.image(-999, -999, 'shadow').setTint(0x0a0f22).setAlpha(0);
+    }
+  }
+
+  destroy(): void {
+    this.contactShadow?.destroy();
+    super.destroy();
   }
 
   update(dt: number, speed: number): void {
@@ -57,8 +89,20 @@ export class Obstacle extends TrackEntity {
     if (this.kind === 'draugr') {
       // Frames now carry the lurch; keep a small bob and only a hint of sway.
       bob = Math.abs(Math.sin(this.t * 7)) * 0.03;
-      this.sprite.setRotation(Math.sin(this.t * 3.5) * 0.02);
+      this.sprite.setRotation(this.baseRotation + Math.sin(this.t * 3.5) * 0.02);
     }
     super.render(proj, bob);
+
+    if (this.contactShadow) {
+      // Offset a little toward the camera and the outside of the lane, stretched to the log's width.
+      const g = proj.project(this.lane + Math.sign(this.lane) * 0.06, this.z - 0.25, 0);
+      const width = this.sprite.displayWidth * 1.05;
+      this.contactShadow
+        .setPosition(g.x, g.y)
+        .setRotation(this.baseRotation * 0.6)
+        .setDisplaySize(width, Math.max(4, width * 0.16))
+        .setDepth(depthForZ(this.z) - 1)
+        .setAlpha(0.7 * fadeForZ(this.z));
+    }
   }
 }

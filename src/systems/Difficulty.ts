@@ -1,4 +1,4 @@
-import { SPAWN, SPEED } from '../config';
+import { SPEED } from '../config';
 import { ObstacleKind } from '../types';
 import { OBSTACLES } from '../entities/Obstacle';
 
@@ -10,10 +10,6 @@ export function difficultyAt(distance: number): number {
 
 export function speedAt(d: number): number {
   return SPEED.start + (SPEED.max - SPEED.start) * d;
-}
-
-export function rowGapAt(d: number): number {
-  return SPAWN.gapStart + (SPAWN.gapEnd - SPAWN.gapStart) * d + Math.random() * SPAWN.gapJitter;
 }
 
 /** Weighted obstacle pick. Creatures phase in as difficulty rises. */
@@ -33,13 +29,4 @@ export function pickObstacle(d: number, passableOnly: boolean): ObstacleKind {
     if (roll <= 0) return kind;
   }
   return pool[0][0];
-}
-
-/** How many lanes a row blocks: 1 early, up to 3 (all jump/slide-able) late. */
-export function rowSize(d: number, rowIndex: number): number {
-  if (rowIndex <= 3) return 1;
-  const roll = Math.random();
-  if (roll < 0.1 * d) return 3;
-  if (roll < 0.18 + 0.42 * d) return 2;
-  return 1;
 }

@@ -44,10 +44,17 @@ export const SPEED = {
   rampDistance: 2800, // metres until max difficulty
 };
 
+/** Obstacles are laid out in fixed-length segments of world distance (metres = units). */
 export const SPAWN = {
-  gapStart: 20, // distance between obstacle rows at the start
-  gapEnd: 13, // ...and at max difficulty
-  gapJitter: 4,
+  segment: 200, // length of one segment
+  firstAt: 70, // world distance where the first segment starts (≈5 s of free running)
+  perSegment: 3, // obstacles per segment early on...
+  perSegmentLate: 4, // ...and after lateFrom
+  lateFrom: 1500,
+  minGap: 55, // minimum gap between obstacles early on...
+  minGapLate: 40, // ...and after lateFrom (hard floor)
+  pairChance: 0.2, // share of segments that add one tight pair
+  pairGap: 15, // the tight pair is the only placement allowed under the floor
 };
 
 // ---- Scoring & power-ups -------------------------------------------------------

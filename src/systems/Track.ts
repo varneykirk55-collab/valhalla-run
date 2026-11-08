@@ -10,7 +10,17 @@ const COLORS = {
   snowA: 0xe6eefb,
   snowB: 0xd3def3,
   laneLine: 0x232a44,
+  // path containment: rock one step lighter than the cobbles, snow caps, frost edge
+  wallFace: 0x6b78a0,
+  wallFaceShade: 0x5a668e,
+  wallBase: 0x3d4766,
+  wallCap: 0xeef3fd,
+  frost: 0xf6f9ff,
+  edgeShade: 0x283050,
 };
+
+/** Low rocky ridge either side of the path. */
+const WALL = { inner: 1.82, outer: 2.25, seg: 2.4, minH: 0.32, maxH: 0.6 };
 
 const SEG = 1.2; // depth of one row of cobbles, world units
 const STONE_W = 0.5; // two cobbles per lane
@@ -90,5 +100,49 @@ export class Track {
 
     // Faint lane grooves keep the three lanes readable.
     for (const l of [-0.5, 0.5]) quad(l - 0.025, l + 0.025, NEAR, FAR, COLORS.laneLine, 0.3);
+
+    // Frost berm where the cobbles meet the snow: a shaded lip on the path side, a bright edge on the snow side.
+    for (const side of [-1, 1]) {
+      quad(side * 1.46, side * 1.5, NEAR, FAR, COLORS.edgeShade, 0.6);
+      quad(side * 1.5, side * 1.58, NEAR, FAR, COLORS.frost);
+    }
+
+    this.drawWalls(proj, distance);
+  }
+
+  /**
+   * Low rocky ridges both sides, drawn far → near so nearer rock overlaps farther.
+   * Heights come from the segment's world index, so the ridge line is stable as it scrolls.
+   */
+  private drawWalls(proj: Projection, distance: number): void {
+    const g = this.g;
+    const fill = (pts: Array<{ x: number; y: number }>, color: number) => {
+      g.fillStyle(color, 1);
+      g.fillPoints(pts, true);
+    };
+    const height = (k: number) => WALL.minH + ((hash(k, 99) % 1000) / 1000) * (WALL.maxH - WALL.minH);
+
+    const offset = distance % WALL.seg;
+    const base = Math.floor(distance / WALL.seg);
+    const count = Math.ceil((FAR - NEAR) / WALL.seg) + 1;
+    for (let i = count; i >= 0; i--) {
+      const z0 = NEAR + i * WALL.seg - offset;
+      const z1 = z0 + WALL.seg;
+      const k = base + i;
+      const h0 = height(k);
+      const h1 = height(k + 1);
+      const shade = (k & 1) === 0 ? COLORS.wallFace : COLORS.wallFaceShade;
+      for (const side of [-1, 1]) {
+        const inner = side * WALL.inner;
+        const outer = side * WALL.outer;
+        // face toward the path
+        fill([proj.project(inner, z0, 0), proj.project(inner, z1, 0), proj.project(inner, z1, h1), proj.project(inner, z0, h0)], shade);
+        // dark foot where rock meets snow
+        fill([proj.project(inner, z0, 0), proj.project(inner, z1, 0), proj.project(inner, z1, 0.05), proj.project(inner, z0, 0.05)], COLORS.wallBase);
+        // snow-capped top, with snow lipping over the face
+        fill([proj.project(inner, z0, h0), proj.project(inner, z1, h1), proj.project(outer, z1, h1 * 0.8), proj.project(outer, z0, h0 * 0.8)], COLORS.wallCap);
+        fill([proj.project(inner, z0, h0), proj.project(inner, z1, h1), proj.project(inner, z1, h1 - 0.07), proj.project(inner, z0, h0 - 0.05)], COLORS.wallCap);
+      }
+    }
   }
 }
