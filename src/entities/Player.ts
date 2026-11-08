@@ -15,6 +15,8 @@ export class Player {
   airborne = false;
   alive = true;
   invuln = 0;
+  /** Flight power-up: cruising above every obstacle. */
+  flying = false;
 
   private slideTimer = 0;
   private slideQueued = false;
@@ -28,6 +30,7 @@ export class Player {
   private readonly sprite: Phaser.GameObjects.Image;
   private readonly shadow: Phaser.GameObjects.Image;
   private readonly aura: Phaser.GameObjects.Image;
+  private readonly wings: Phaser.GameObjects.Image;
 
   constructor(private readonly scene: Phaser.Scene) {
     this.shadow = scene.add.image(0, 0, 'shadow').setDepth(DEPTH.shadow);
@@ -37,6 +40,7 @@ export class Player {
       .setBlendMode(Phaser.BlendModes.ADD)
       .setTint(0xc79bff)
       .setVisible(false);
+    this.wings = scene.add.image(0, 0, 'flight_wings').setDepth(DEPTH.player - 0.5).setVisible(false);
     this.sprite = scene.add
       .image(0, 0, 'viking_run', 0)
       .setOrigin(RUNNER.originX, RUNNER.originY)
@@ -72,8 +76,25 @@ export class Player {
     sfx(this.scene).jump(); // SFX: jump
   }
 
+  /** Start or end flight. Ending drops the runner back down with a short grace period. */
+  setFlying(on: boolean): void {
+    if (on === this.flying || !this.alive) return;
+    this.flying = on;
+    if (on) {
+      this.airborne = true;
+      this.vh = 0;
+      this.slideTimer = 0;
+      this.slideQueued = false;
+      sfx(this.scene).jump(); // SFX: take-off
+    } else {
+      this.vh = 0;
+      this.invuln = Math.max(this.invuln, PLAYER.flightLandingGrace);
+    }
+  }
+
   /** On the ground: slide. In the air: slam down and slide on landing. */
   slide(): void {
+    if (this.flying) return;
     if (this.airborne) {
       this.vh = Math.min(this.vh, PLAYER.fastFallVelocity);
       this.slideQueued = true;
@@ -87,7 +108,9 @@ export class Player {
     this.x += (this.lane - this.x) * Math.min(1, dt * PLAYER.laneSpeed);
     if (Math.abs(this.lane - this.x) < 0.002) this.x = this.lane;
 
-    if (this.airborne) {
+    if (this.flying) {
+      this.h += (PLAYER.flightHeight - this.h) * Math.min(1, dt * PLAYER.flightClimb);
+    } else if (this.airborne) {
       this.vh -= PLAYER.gravity * dt;
       this.h += this.vh * dt;
       if (this.h <= 0) {
@@ -113,6 +136,7 @@ export class Player {
 
   /** Run, jump, or slide frame. Jump playback follows airtime, not the clip's own hop. */
   private pose(): { key: string; frame?: number } {
+    if (this.flying) return { key: 'viking_jump', frame: Math.floor(RUNNER.jumpFrames / 2) };
     if (this.airborne) {
       const airtime = (2 * PLAYER.jumpVelocity) / PLAYER.gravity;
       let u = Math.min(0.999, this.jumpTime / airtime);
@@ -168,6 +192,13 @@ export class Player {
       .setScale(this.sliding ? RUNNER.slideScale : RUNNER.scale)
       .setAlpha(this.invuln > 0 && Math.floor(this.invuln * 20) % 2 === 0 ? 0.35 : 1);
 
+    this.wings.setVisible(this.flying);
+    if (this.flying) {
+      const body = this.sprite.displayHeight * this.sprite.originY;
+      const flap = 1 + Math.sin(this.runClock * 0.9) * 0.18;
+      this.wings.setPosition(p.x, p.y - body * 0.6).setScale(1.4, 1.4 * flap);
+    }
+
     this.aura.setVisible(shieldOn);
     if (shieldOn) {
       const pulse = 1.05 + Math.sin(this.runClock * 0.8) * 0.06;
@@ -180,6 +211,7 @@ export class Player {
   crash(): { x: number; y: number } {
     this.alive = false;
     this.aura.setVisible(false);
+    this.wings.setVisible(false);
     this.sprite.setTint(0xff9a8a).setAlpha(1);
     const x = this.sprite.x;
     const y = this.sprite.y;

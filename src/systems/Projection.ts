@@ -32,6 +32,7 @@ export class Projection {
   /** Smoothly track the player. Call once per frame. */
   follow(playerX: number, playerH: number, dt: number): void {
     this.camX += (playerX * 0.7 - this.camX) * Math.min(1, dt * 6);
-    this.lift += (playerH * UNIT_PX * 0.22 - this.lift) * Math.min(1, dt * 5);
+    // Capped so flight (cruising high) lifts the view like a big jump, not further.
+    this.lift += (Math.min(playerH, 1.5) * UNIT_PX * 0.22 - this.lift) * Math.min(1, dt * 5);
   }
 }

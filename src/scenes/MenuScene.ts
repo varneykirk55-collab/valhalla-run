@@ -187,10 +187,11 @@ export class MenuScene extends Phaser.Scene {
       ['rune_shield', `${POWER_LABELS.shield}: blocks one hit`, RUNE_COLORS.shield],
       ['rune_magnet', `${POWER_LABELS.magnet}: pulls runes in`, RUNE_COLORS.magnet],
       ['rune_double', POWER_LABELS.double, RUNE_COLORS.double],
+      ['rune_flight', `${POWER_LABELS.flight}: soar over everything`, RUNE_COLORS.flight],
     ];
     runes.forEach(([key, text, color], i) => {
-      const y = 444 + i * 48;
-      items.push(this.add.image(left + 20, top + y, key).setScale(0.5));
+      const y = 440 + i * 42;
+      items.push(this.add.image(left + 20, top + y, key).setScale(0.45));
       items.push(line(y, text, color, 19).setX(left + 50));
     });
     items.push(

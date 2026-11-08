@@ -18,8 +18,8 @@ export function pickObstacle(d: number, passableOnly: boolean): ObstacleKind {
     ['rock', 3],
     ['spikes', 2.5],
     ['fallenTree', 2],
-    ['raven', d > 0.12 ? 1.2 + 2 * d : 0],
-    ['draugr', d > 0.2 ? 0.8 + 2 * d : 0],
+    ['raven', d > 0.05 ? 1.4 + 2.4 * d : 0],
+    ['draugr', d > 0.1 ? 1 + 2.4 * d : 0],
   ];
   const pool = weights.filter(([k, w]) => w > 0 && (!passableOnly || OBSTACLES[k].avoid !== 'lane'));
   const total = pool.reduce((sum, [, w]) => sum + w, 0);

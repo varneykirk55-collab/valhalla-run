@@ -117,9 +117,10 @@ export class GameScene extends Phaser.Scene {
       this.speed = speedAt(d);
       this.distance += this.speed * dt;
       this.powers.update(dt);
+      this.player.setFlying(this.powers.active('flight'));
       this.player.update(dt, this.speed);
       const magnet = this.powers.active('magnet') ? { x: this.player.x, h: this.player.h } : null;
-      this.spawner.update(dt, this.speed, d, magnet);
+      this.spawner.update(dt, this.speed, d, magnet, this.powers.remaining('flight'));
       this.collectRunes();
       this.checkObstacles();
     }

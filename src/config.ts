@@ -35,31 +35,37 @@ export const PLAYER = {
   slideHeight: 0.45,
   laneHitRadius: 0.55,
   invulnTime: 1.0, // after a shield absorbs a hit
+  flightHeight: 2.4, // cruising height while the flight power-up lasts (clears every obstacle)
+  flightClimb: 4, // how quickly the runner rises to cruising height
+  flightLandingGrace: 1.0, // invulnerable seconds after flight ends, while dropping back down
 };
 
 // ---- Difficulty -------------------------------------------------------------
 export const SPEED = {
-  start: 13, // world units (metres) per second
-  max: 27,
-  rampDistance: 2800, // metres until max difficulty
+  start: 14, // world units (metres) per second
+  max: 31,
+  rampDistance: 2200, // metres until max difficulty
 };
 
 /** Obstacles are laid out in fixed-length segments of world distance (metres = units). */
 export const SPAWN = {
   segment: 200, // length of one segment
   firstAt: 70, // world distance where the first segment starts (≈5 s of free running)
-  perSegment: 3, // obstacles per segment early on...
-  perSegmentLate: 4, // ...and after lateFrom
-  lateFrom: 1500,
-  minGap: 55, // minimum gap between obstacles early on...
-  minGapLate: 40, // ...and after lateFrom (hard floor)
-  pairChance: 0.2, // share of segments that add one tight pair
+  perSegment: 5, // obstacles per segment early on...
+  perSegmentLate: 7, // ...and after lateFrom
+  lateFrom: 1000,
+  minGap: 30, // minimum gap between obstacles early on...
+  minGapLate: 22, // ...and after lateFrom (hard floor)
+  pairChance: 0.35, // share of segments that add one tight pair
+  doubleFrom: 400, // from here, some obstacles come two abreast (one lane always left open)
+  doubleChance: 0.2, // chance per obstacle at doubleFrom...
+  doubleChanceLate: 0.45, // ...rising to this by the end of the difficulty ramp
   pairGap: 15, // the tight pair is the only placement allowed under the floor
 };
 
 // ---- Scoring & power-ups -------------------------------------------------------
 export const RUNE_VALUE = 10;
-export const POWER_DURATION = { shield: 12, magnet: 8, double: 9 } as const;
+export const POWER_DURATION = { shield: 12, magnet: 8, double: 9, flight: 7 } as const;
 
 // ---- Input -------------------------------------------------------------------
 export const SWIPE_THRESHOLD = 34; // game pixels

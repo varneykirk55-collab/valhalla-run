@@ -4,7 +4,7 @@ export type Action = 'left' | 'right' | 'jump' | 'slide';
 
 export type ObstacleKind = 'rock' | 'spikes' | 'fallenTree' | 'raven' | 'draugr';
 
-export type PowerKind = 'shield' | 'magnet' | 'double';
+export type PowerKind = 'shield' | 'magnet' | 'double' | 'flight';
 
 export type RuneKind = 'basic' | PowerKind;
 

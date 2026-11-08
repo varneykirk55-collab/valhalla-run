@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { DESPAWN_Z, SPAWN, SPAWN_Z } from '../config';
+import { DESPAWN_Z, PLAYER, SPAWN, SPAWN_Z } from '../config';
 import { ObstacleKind } from '../types';
 import { Decor } from '../entities/Decor';
 import { OBSTACLES, Obstacle } from '../entities/Obstacle';
@@ -21,7 +21,7 @@ function sweep<T extends TrackEntity>(list: T[]): void {
 
 /** A planned placement, keyed by world distance along the track. */
 type Planned =
-  | { type: 'obstacle'; at: number; kind: ObstacleKind; lane: number; gapBehind: number }
+  | { type: 'obstacle'; at: number; kind: ObstacleKind; lane: number; gapBehind: number; blocked: number[] }
   | { type: 'runes'; at: number; lane: number; count: number };
 
 /**
@@ -40,7 +40,10 @@ export class Spawner {
   private readonly queue: Planned[] = [];
   private nextSegment: number = SPAWN.firstAt;
   private lastAt = -Infinity;
-  private lastLane = 0;
+  /** Lanes blocked by the previous obstacle (two when it came two abreast). */
+  private lastBlocked: number[] = [0];
+  /** Distance since the last sky rune, while flying. */
+  private sinceSky = 0;
   private rowsSincePower = 0;
   private sinceDecor = 0;
   private nextDecor = 2;
@@ -49,9 +52,20 @@ export class Spawner {
     for (let z = -2; z < SPAWN_Z; z += Phaser.Math.FloatBetween(1.6, 3)) this.spawnDecor(z);
   }
 
-  update(dt: number, speed: number, difficulty: number, magnet: { x: number; h: number } | null): void {
+  update(dt: number, speed: number, difficulty: number, magnet: { x: number; h: number } | null, flightLeft = 0): void {
     const dz = speed * dt;
     this.travelled += dz;
+
+    // While flying, lay a weaving trail of runes at cruising height, but only ones
+    // that will reach the runner before the flight ends.
+    if (flightLeft > SPAWN_Z / speed) {
+      this.sinceSky += dz;
+      if (this.sinceSky >= 2.6) {
+        this.sinceSky = 0;
+        const lane = Math.round(Math.sin(this.travelled * 0.045) * 1.2);
+        this.runes.push(new Rune(this.scene, 'basic', Phaser.Math.Clamp(lane, -1, 1), SPAWN_Z, PLAYER.flightHeight + 0.4));
+      }
+    }
 
     // Keep at least one segment planned beyond the spawn horizon.
     while (this.nextSegment < this.travelled + SPAWN_Z * 2) this.planSegment(this.nextSegment, difficulty);
@@ -90,8 +104,9 @@ export class Spawner {
 
   /**
    * Plan one segment: n obstacles, one per equal slot, jittered inside the slot so
-   * neighbours (also across segments) are never closer than minGap. 20% of segments
+   * neighbours (also across segments) are never closer than minGap. Some segments
    * add a tight pair 15 m behind one obstacle — the only placement under the floor.
+   * Counts, gaps and odds live in SPAWN (config.ts).
    */
   private planSegment(start: number, d: number): void {
     const late = start >= SPAWN.lateFrom;
@@ -111,16 +126,23 @@ export class Spawner {
   }
 
   private planObstacle(at: number, d: number): void {
-    // Alternate lanes: never the same lane twice in a row (so never two centres in a row).
-    const lane = Phaser.Utils.Array.GetRandom([-1, 0, 1].filter((l) => l !== this.lastLane));
+    // Alternate lanes: never reuse a lane the previous obstacle blocked (so never two centres in a row).
+    const open = [-1, 0, 1].filter((l) => !this.lastBlocked.includes(l));
+    const lane = Phaser.Utils.Array.GetRandom(open.length ? open : [-1, 1]);
+    const blocked = [lane];
+    // Later on, some obstacles come two abreast; the third lane always stays open.
+    const doubleChance = at < SPAWN.doubleFrom ? 0 : SPAWN.doubleChance + (SPAWN.doubleChanceLate - SPAWN.doubleChance) * d;
+    // The second lane also avoids the previous obstacle's lanes, so the lane rule still holds.
+    const second = open.filter((l) => l !== lane);
+    if (second.length && Math.random() < doubleChance) blocked.push(Phaser.Utils.Array.GetRandom(second));
     const gapBehind = at - this.lastAt;
     // A long empty stretch gets a rune line halfway, in any lane (nearest obstacle ≥ 17 m away).
     if (gapBehind >= 35 && Number.isFinite(this.lastAt)) {
       this.queue.push({ type: 'runes', at: this.lastAt + gapBehind / 2 + 5, lane: Phaser.Math.Between(-1, 1), count: 5 });
     }
-    this.queue.push({ type: 'obstacle', at, kind: pickObstacle(d, false), lane, gapBehind });
+    for (const l of blocked) this.queue.push({ type: 'obstacle', at, kind: pickObstacle(d, false), lane: l, gapBehind, blocked });
     this.lastAt = at;
-    this.lastLane = lane;
+    this.lastBlocked = blocked;
   }
 
   /** Spawn everything that has reached the horizon. Charging creatures wait so they still arrive on their mark. */
@@ -150,8 +172,9 @@ export class Spawner {
     this.rowsSincePower++;
     this.obstacles.push(new Obstacle(this.scene, item.kind, item.lane, spawnZ));
 
-    if (Math.random() > 0.65) return;
-    const free = [-1, 0, 1].filter((l) => l !== item.lane);
+    // One set of runes per placement (the first of a two-abreast pair), never into a blocked lane.
+    if (item.lane !== item.blocked[0] || Math.random() > 0.65) return;
+    const free = [-1, 0, 1].filter((l) => !item.blocked.includes(l));
     if (OBSTACLES[item.kind].avoid === 'jump' && Math.random() < 0.35) this.runeArc(item.lane, z);
     else this.runeLine(Phaser.Utils.Array.GetRandom(free), z, Math.min(item.gapBehind, 20));
   }

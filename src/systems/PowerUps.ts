@@ -1,17 +1,18 @@
 import { POWER_DURATION } from '../config';
 import { PowerKind } from '../types';
 
-export const POWER_KINDS: PowerKind[] = ['shield', 'magnet', 'double'];
+export const POWER_KINDS: PowerKind[] = ['shield', 'magnet', 'double', 'flight'];
 
 export const POWER_LABELS: Record<PowerKind, string> = {
   shield: 'Algiz · Shield',
   magnet: 'Fehu · Magnet',
   double: 'Sowilo · ×2 Runes',
+  flight: 'Raidho · Flight',
 };
 
 /** Timed power-up state. The shield also ends early when it absorbs a hit. */
 export class PowerUps {
-  private readonly timers: Record<PowerKind, number> = { shield: 0, magnet: 0, double: 0 };
+  private readonly timers: Record<PowerKind, number> = { shield: 0, magnet: 0, double: 0, flight: 0 };
 
   activate(kind: PowerKind): void {
     this.timers[kind] = POWER_DURATION[kind];
@@ -23,6 +24,11 @@ export class PowerUps {
 
   active(kind: PowerKind): boolean {
     return this.timers[kind] > 0;
+  }
+
+  /** Seconds left. */
+  remaining(kind: PowerKind): number {
+    return this.timers[kind];
   }
 
   /** Remaining fraction 0..1, for HUD bars. */

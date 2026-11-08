@@ -165,9 +165,10 @@ export const GLYPHS: Record<string, Pt[][]> = {
   algiz: [[[0.5, 0.08], [0.5, 0.92]], [[0.2, 0.12], [0.5, 0.46]], [[0.8, 0.12], [0.5, 0.46]]],
   fehu: [[[0.32, 0.08], [0.32, 0.92]], [[0.32, 0.4], [0.72, 0.12]], [[0.32, 0.64], [0.72, 0.36]]],
   sowilo: [[[0.68, 0.08], [0.3, 0.44], [0.7, 0.56], [0.32, 0.92]]],
+  raidho: [[[0.3, 0.08], [0.3, 0.92]], [[0.3, 0.08], [0.7, 0.3], [0.3, 0.5], [0.72, 0.92]]],
 };
 
-type RuneStyle = 'crystal' | 'shield' | 'magnet' | 'sun';
+type RuneStyle = 'crystal' | 'shield' | 'magnet' | 'sun' | 'wings';
 
 /** Glyph strokes inside a box: a wide coloured glow pass, then a bright core so it reads at small sizes. */
 function glyphStrokes(c: Ctx, glyph: Pt[][], color: string, x: number, y: number, w: number, h: number, width: number): void {
@@ -228,6 +229,10 @@ function rune(c: Ctx, glyph: Pt[][], color: string, style: RuneStyle): void {
     c.beginPath();
     c.arc(36, 34, 13, Math.PI * 1.05, Math.PI * 1.95, true);
     c.stroke();
+  } else if (style === 'wings') {
+    for (const side of [-1, 1]) {
+      poly(c, [[36, 38], [36 + side * 10, 22], [36 + side * 24, 16], [36 + side * 20, 26], [36 + side * 25, 30], [36 + side * 18, 36], [36 + side * 21, 42], [36 + side * 8, 44]], color);
+    }
   } else {
     for (let i = 0; i < 12; i++) {
       const a = (i / 12) * TAU;
@@ -256,7 +261,30 @@ export const RUNE_COLORS = {
   shield: '#6cb6ff',
   magnet: '#ff6670',
   double: '#ffd257',
+  flight: '#c39bff',
 } as const;
+
+/** Feathered Valkyrie wings worn while the flight power-up lasts (drawn behind the runner). */
+function wings(c: Ctx): void {
+  c.save();
+  c.shadowColor = '#c39bff';
+  c.shadowBlur = 14;
+  for (const side of [-1, 1]) {
+    const x = (dx: number) => 90 + side * dx;
+    for (let f = 0; f < 5; f++) {
+      const len = 78 - f * 11;
+      const y0 = 30 + f * 9;
+      poly(
+        c,
+        [[x(6), y0 + 8], [x(20), y0 - 4], [x(len * 0.7), y0 - 12 + f * 2], [x(len), y0 - 4 + f * 3], [x(len * 0.75), y0 + 6], [x(16), y0 + 14]],
+        f % 2 === 0 ? 'rgba(246,242,255,0.95)' : 'rgba(222,212,255,0.95)',
+        'rgba(150,120,220,0.7)',
+        1.2,
+      );
+    }
+  }
+  c.restore();
+}
 
 // ---- FX ---------------------------------------------------------------------
 
@@ -282,6 +310,8 @@ export function generatePropTextures(scene: Phaser.Scene): void {
   makeTexture(scene, 'rune_shield', 72, 72, (c) => rune(c, GLYPHS.algiz, RUNE_COLORS.shield, 'shield'));
   makeTexture(scene, 'rune_magnet', 72, 72, (c) => rune(c, GLYPHS.fehu, RUNE_COLORS.magnet, 'magnet'));
   makeTexture(scene, 'rune_double', 72, 72, (c) => rune(c, GLYPHS.sowilo, RUNE_COLORS.double, 'sun'));
+  makeTexture(scene, 'rune_flight', 72, 72, (c) => rune(c, GLYPHS.raidho, RUNE_COLORS.flight, 'wings'));
+  makeTexture(scene, 'flight_wings', 180, 90, wings);
 
   makeTexture(scene, 'shadow', 80, 22, (c) => {
     c.fillStyle = 'rgba(10,14,24,0.55)';
