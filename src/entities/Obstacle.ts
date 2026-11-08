@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { depthForZ, fadeForZ } from '../config';
-import { WINTER_SCALE } from '../gfx/props';
+import { WINTER_SCALE, levelledLogTexture } from '../gfx/props';
 import { ObstacleDef, ObstacleKind } from '../types';
 import { Projection } from '../systems/Projection';
 import { TrackEntity } from './TrackEntity';
@@ -27,13 +27,6 @@ const FACING: Record<ObstacleKind, 'across' | 'player' | 'none'> = {
   raven: 'player',
   draugr: 'player',
 };
-/**
- * The fallen-tree art is painted in 3/4 view: the log runs ~12.5° downhill to the
- * right, cut end facing camera-right. Counter-rotating levels it across the lane;
- * after rotation its rocks sit this far above the sprite's anchor (units at z = 0).
- */
-const LOG_ART_SLOPE = Phaser.Math.DegToRad(12.5);
-const LOG_SINK = 0.17;
 
 export class Obstacle extends TrackEntity {
   readonly kind: ObstacleKind;
@@ -55,13 +48,13 @@ export class Obstacle extends TrackEntity {
     this.t = Math.random() * 2;
     if (kind === 'rock' || kind === 'spikes' || kind === 'fallenTree') this.baseScale = WINTER_SCALE[kind];
 
-    // Level the log across the lane. In the right lane, mirror it so the cut end
-    // faces the middle of the path, as it would from the camera's point of view.
-    const across = FACING[kind] === 'across';
-    const flip = across && lane > 0;
-    this.sprite.setFlipX(flip);
-    this.baseRotation = across ? (flip ? LOG_ART_SLOPE : -LOG_ART_SLOPE) : 0;
-    this.sprite.setRotation(this.baseRotation);
+    // Logs lie straight across the lane: use the levelled (sheared) copy of the art, no
+    // rotation. In the right lane, mirror it so the cut end faces the middle of the path.
+    this.baseRotation = 0;
+    if (FACING[kind] === 'across') {
+      this.sprite.setTexture(levelledLogTexture(scene));
+      this.sprite.setFlipX(lane > 0);
+    }
     if (kind === 'fallenTree') {
       // Slightly darker underside, and a contact shadow so the log sits on the snow.
       this.sprite.setTint(0xffffff, 0xffffff, 0xb4bccf, 0xb4bccf);
@@ -100,7 +93,6 @@ export class Obstacle extends TrackEntity {
       bob = Math.abs(Math.sin(this.t * 7)) * 0.03;
       this.sprite.setRotation(this.baseRotation + Math.sin(this.t * 3.5) * 0.02);
     }
-    if (this.kind === 'fallenTree') bob = -LOG_SINK; // levelling lifts the rocks; set them back on the snow
     super.render(proj, bob);
 
     if (this.contactShadow) {

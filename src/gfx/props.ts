@@ -14,6 +14,49 @@ export const WINTER_SCALE = {
   fallenTree: 180 / 325,
 } as const;
 
+/** Measured slope of the trunk in the fallen-tree art (3/4 view, falling to the right). */
+const LOG_ART_SLOPE_DEG = 15.3;
+
+/**
+ * Display copy of the existing fallen-tree texture, sheared vertically so the trunk
+ * runs level while the supporting rocks stay upright (a rotation would tilt them).
+ * Built once from whatever 'fallenTree' holds (the PNG, or the procedural fallback)
+ * and cropped to its visible pixels so the anchor sits on the lowest snow.
+ */
+export function levelledLogTexture(scene: Phaser.Scene): string {
+  const key = 'fallenTree_level';
+  if (scene.textures.exists(key)) return key;
+  const src = scene.textures.get('fallenTree').getSourceImage() as CanvasImageSource & { width: number; height: number };
+  const tan = Math.tan((LOG_ART_SLOPE_DEG * Math.PI) / 180);
+  const lift = Math.ceil(tan * src.width);
+  const work = document.createElement('canvas');
+  work.width = src.width;
+  work.height = src.height + lift;
+  const wc = work.getContext('2d');
+  if (!wc) return 'fallenTree';
+  wc.setTransform(1, -tan, 0, 1, 0, lift); // y' = y - tan·x + lift
+  wc.drawImage(src, 0, 0);
+
+  // Crop to the visible pixels.
+  const { data } = wc.getImageData(0, 0, work.width, work.height);
+  let top = work.height;
+  let bottom = 0;
+  for (let y = 0; y < work.height; y++) {
+    for (let x = 0; x < work.width; x++) {
+      if (data[(y * work.width + x) * 4 + 3] > 24) {
+        if (y < top) top = y;
+        bottom = y;
+        break;
+      }
+    }
+  }
+  const tex = scene.textures.createCanvas(key, work.width, Math.max(1, bottom - top + 1));
+  if (!tex) return 'fallenTree';
+  tex.getContext().drawImage(work, 0, -top);
+  tex.refresh();
+  return key;
+}
+
 // ---- Obstacles ------------------------------------------------------------
 
 function rock(c: Ctx, w: number, h: number): void {
