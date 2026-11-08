@@ -10,17 +10,22 @@ const COLORS = {
   snowA: 0xe6eefb,
   snowB: 0xd3def3,
   laneLine: 0x232a44,
-  // path containment: rock one step lighter than the cobbles, snow caps, frost edge
+  // path containment: a rock footing one step lighter than the cobbles, ice walls on top
   wallFace: 0x6b78a0,
   wallFaceShade: 0x5a668e,
   wallBase: 0x3d4766,
-  wallCap: 0xeef3fd,
+  iceA: 0x9fd4f2,
+  iceB: 0x86c2e8,
+  iceGlint: 0xd6f1ff,
+  iceStreak: 0xc4eaff,
+  iceSeam: 0x4f7fb0,
+  iceTop: 0xeef9ff,
   frost: 0xf6f9ff,
   edgeShade: 0x283050,
 };
 
-/** Low rocky ridge either side of the path. */
-const WALL = { inner: 1.82, outer: 2.25, seg: 2.4, minH: 0.32, maxH: 0.6 };
+/** Rock footing topped by a jagged ice wall, either side of the path (heights in units). */
+const WALL = { inner: 1.82, outer: 2.25, seg: 2.4, rockMin: 0.14, rockMax: 0.22, minH: 0.6, maxH: 1.0 };
 
 const SEG = 1.2; // depth of one row of cobbles, world units
 const STONE_W = 0.5; // two cobbles per lane
@@ -36,6 +41,8 @@ function hash(a: number, b: number): number {
 /** The snowy ground and the 3-lane cobbled path, redrawn each frame in perspective. */
 export class Track {
   private readonly g: Phaser.GameObjects.Graphics;
+  /** Ice walls get their own layer above roadside pines (which stand behind them), still under the runner. */
+  private readonly walls: Phaser.GameObjects.Graphics;
   private readonly snow: Phaser.GameObjects.Image;
   private readonly fog: Phaser.GameObjects.Image;
 
@@ -46,6 +53,7 @@ export class Track {
       .setDisplaySize(GAME_W, GAME_H - HORIZON_Y + 80)
       .setDepth(DEPTH.snowfield);
     this.g = scene.add.graphics().setDepth(DEPTH.ground);
+    this.walls = scene.add.graphics().setDepth(DEPTH.shadow - 5);
     this.fog = scene.add.image(0, HORIZON_Y - 24, 'fog').setOrigin(0, 0).setDisplaySize(GAME_W, 150).setDepth(DEPTH.fog);
   }
 
@@ -111,16 +119,20 @@ export class Track {
   }
 
   /**
-   * Low rocky ridges both sides, drawn far → near so nearer rock overlaps farther.
-   * Heights come from the segment's world index, so the ridge line is stable as it scrolls.
+   * Ice walls both sides on a low rock footing, drawn far → near so nearer ice
+   * overlaps farther. Heights come from each segment's world index, so the jagged
+   * top edge is stable as it scrolls.
    */
   private drawWalls(proj: Projection, distance: number): void {
-    const g = this.g;
+    const g = this.walls;
+    g.clear();
     const fill = (pts: Array<{ x: number; y: number }>, color: number) => {
       g.fillStyle(color, 1);
       g.fillPoints(pts, true);
     };
-    const height = (k: number) => WALL.minH + ((hash(k, 99) % 1000) / 1000) * (WALL.maxH - WALL.minH);
+    const rand = (k: number, salt: number) => (hash(k, salt) % 1000) / 1000;
+    const iceH = (k: number) => WALL.minH + rand(k, 99) * (WALL.maxH - WALL.minH);
+    const rockH = (k: number) => WALL.rockMin + rand(k, 7) * (WALL.rockMax - WALL.rockMin);
 
     const offset = distance % WALL.seg;
     const base = Math.floor(distance / WALL.seg);
@@ -128,20 +140,31 @@ export class Track {
     for (let i = count; i >= 0; i--) {
       const z0 = NEAR + i * WALL.seg - offset;
       const z1 = z0 + WALL.seg;
+      const zm = (z0 + z1) / 2;
       const k = base + i;
-      const h0 = height(k);
-      const h1 = height(k + 1);
-      const shade = (k & 1) === 0 ? COLORS.wallFace : COLORS.wallFaceShade;
+      const h0 = iceH(k);
+      const h1 = iceH(k + 1);
+      const r0 = rockH(k);
+      const r1 = rockH(k + 1);
+      const even = (k & 1) === 0;
       for (const side of [-1, 1]) {
-        const inner = side * WALL.inner;
+        const x = side * WALL.inner;
         const outer = side * WALL.outer;
-        // face toward the path
-        fill([proj.project(inner, z0, 0), proj.project(inner, z1, 0), proj.project(inner, z1, h1), proj.project(inner, z0, h0)], shade);
-        // dark foot where rock meets snow
-        fill([proj.project(inner, z0, 0), proj.project(inner, z1, 0), proj.project(inner, z1, 0.05), proj.project(inner, z0, 0.05)], COLORS.wallBase);
-        // snow-capped top, with snow lipping over the face
-        fill([proj.project(inner, z0, h0), proj.project(inner, z1, h1), proj.project(outer, z1, h1 * 0.8), proj.project(outer, z0, h0 * 0.8)], COLORS.wallCap);
-        fill([proj.project(inner, z0, h0), proj.project(inner, z1, h1), proj.project(inner, z1, h1 - 0.07), proj.project(inner, z0, h0 - 0.05)], COLORS.wallCap);
+        const P = (z: number, e: number) => proj.project(x, z, e);
+        // rock footing
+        fill([P(z0, 0), P(z1, 0), P(z1, r1), P(z0, r0)], even ? COLORS.wallFace : COLORS.wallFaceShade);
+        fill([P(z0, 0), P(z1, 0), P(z1, 0.05), P(z0, 0.05)], COLORS.wallBase);
+        // ice face
+        fill([P(z0, r0), P(z1, r1), P(z1, h1), P(z0, h0)], even ? COLORS.iceA : COLORS.iceB);
+        fill([P(z0, r0), P(z1, r1), P(z1, r1 + 0.03), P(z0, r0 + 0.03)], COLORS.iceSeam);
+        // a vertical streak and a glint band near the top read as glassy ice
+        const s0 = zm - 0.18;
+        const s1 = zm + 0.06;
+        const top = (z: number) => h0 + ((h1 - h0) * (z - z0)) / WALL.seg;
+        fill([P(s0, r0 + 0.08), P(s1, r1 + 0.08), P(s1, top(s1) - 0.12), P(s0, top(s0) - 0.18)], COLORS.iceStreak);
+        fill([P(z0, h0 - 0.1), P(z1, h1 - 0.1), P(z1, h1), P(z0, h0)], COLORS.iceGlint);
+        // frosted top
+        fill([P(z0, h0), P(z1, h1), proj.project(outer, z1, h1 * 0.9), proj.project(outer, z0, h0 * 0.9)], COLORS.iceTop);
       }
     }
   }

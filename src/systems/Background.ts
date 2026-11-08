@@ -53,24 +53,27 @@ export class Background {
     this.pines = scene.add.image(GAME_W / 2, 0, 'pineRidge').setOrigin(0.5, 1).setDepth(DEPTH.cliffs + 0.5);
     this.mist = scene.add.tileSprite(GAME_W / 2, 0, GAME_W, 180, 'mist').setOrigin(0.5, 1).setDepth(DEPTH.mist).setAlpha(0.9);
 
+    // Static backdrop: no sideways parallax on lane changes, no bob on jumps.
+    this.far.setPosition(GAME_W / 2, HORIZON_Y - 36);
+    this.fjord.setPosition(GAME_W / 2, HORIZON_Y + 8);
+    this.mid.setPosition(GAME_W / 2, HORIZON_Y - 2);
+    this.cliffs.setPosition(GAME_W / 2, HORIZON_Y + 14);
+    this.pines.setPosition(GAME_W / 2, HORIZON_Y + 18);
+    this.mist.setPosition(GAME_W / 2, HORIZON_Y + 40);
+    // The ground still dips when the camera rises on a jump; this fixed strip of the
+    // same snow fills the band it uncovers below the static backdrop.
+    scene.add.image(0, HORIZON_Y, 'snowfield').setOrigin(0, 0).setDisplaySize(GAME_W, 140).setDepth(DEPTH.snowfield - 0.5);
+
     // Above the fog, below every track object.
     this.streakGfx = scene.add.graphics().setDepth(DEPTH.fog + 1).setBlendMode(Phaser.BlendModes.ADD);
     for (let i = 0; i < STREAK_COUNT; i++) this.streaks.push(newStreak());
   }
 
   update(dt: number, proj: Projection, speed: number): void {
-    const cam = proj.camX;
-    const lift = proj.lift;
+    // Mountains, fjord, cliffs and pines stay put (positioned once in the constructor);
+    // only the mist drifts, faster as the run speeds up.
     this.mistScroll += dt * (10 + speed * 1.5);
-
-    // Nearer layers slide further as the camera follows the lanes (parallax).
-    this.far.setPosition(GAME_W / 2 - cam * 8, HORIZON_Y - 36 + lift * 0.35);
-    this.fjord.setPosition(GAME_W / 2 - cam * 14, HORIZON_Y + 8 + lift * 0.5);
-    this.mid.setPosition(GAME_W / 2 - cam * 18, HORIZON_Y - 2 + lift * 0.5);
-    this.cliffs.setPosition(GAME_W / 2 - cam * 30, HORIZON_Y + 14 + lift * 0.6);
-    this.pines.setPosition(GAME_W / 2 - cam * 40, HORIZON_Y + 18 + lift * 0.7);
-    this.mist.setPosition(GAME_W / 2, HORIZON_Y + 40 + lift * 0.8);
-    this.mist.tilePositionX = cam * 45 + this.mistScroll;
+    this.mist.tilePositionX = this.mistScroll;
     this.drawStreaks(dt, proj, speed);
   }
 
